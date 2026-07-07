@@ -1,33 +1,68 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
+import { getCurrentUser, loginUser, signupUser, resetPassword as resetPasswordRequest } from '../api/authApi'
 
 const AuthContext = createContext(null)
 
-const DUMMY_USER = {
-  name: 'Dr. Ishaan Kapoor',
-  role: 'Hospital Administrator',
-  email: 'ishaan.kapoor@meridianhealth.example',
-  avatar: 'https://i.pravatar.cc/120?img=68',
-}
-
 export function AuthProvider({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
 
-  const login = () => {
-    setUser(DUMMY_USER)
-    setIsAuthenticated(true)
+  const isAuthenticated = Boolean(user)
+
+  useEffect(() => {
+    async function loadUserFromToken() {
+      const token = localStorage.getItem('hospital_token')
+
+      if (!token) {
+        setLoading(false)
+        return
+      }
+
+      try {
+        const data = await getCurrentUser()
+        setUser(data.user)
+      } catch (error) {
+        localStorage.removeItem('hospital_token')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadUserFromToken()
+  }, [])
+
+  const login = async (credentials) => {
+    const data = await loginUser(credentials)
+    localStorage.setItem('hospital_token', data.token)
+    setUser(data.user)
+    return data.user
+  }
+
+  const signup = async (userData) => {
+    const data = await signupUser(userData)
+    localStorage.setItem('hospital_token', data.token)
+    setUser(data.user)
+    return data.user
+  }
+
+  const resetPassword = async (token, password) => {
+    const data = await resetPasswordRequest(token, password)
+    localStorage.setItem('hospital_token', data.token)
+    setUser(data.user)
+    return data.user
   }
 
   const logout = () => {
+    localStorage.removeItem('hospital_token')
     setUser(null)
-    setIsAuthenticated(false)
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, loading, login, signup, resetPassword, logout }}>
       {children}
     </AuthContext.Provider>
   )
 }
 
 export const useAuth = () => useContext(AuthContext)
+

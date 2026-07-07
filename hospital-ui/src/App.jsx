@@ -4,6 +4,9 @@ import { UIProvider } from './context/UIContext'
 import MainLayout from './components/layout/MainLayout'
 import ProtectedRoute from './routes/ProtectedRoute'
 import LoginPage from './pages/Login/LoginPage'
+import ForgotPasswordPage from './pages/ForgotPassword/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ForgotPassword/ResetPasswordPage'
+import CreateUserPage from './pages/Admin/CreateUserPage'
 import DashboardPage from './pages/Dashboard/DashboardPage'
 import PatientsPage from './pages/Patients/PatientsPage'
 import DoctorsPage from './pages/Doctors/DoctorsPage'
@@ -18,6 +21,8 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<LoginPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
 
             <Route
               element={
@@ -26,6 +31,7 @@ export default function App() {
                 </ProtectedRoute>
               }
             >
+              <Route path="/admin/users/new" element={<ProtectedRoute allowedRoles={['admin']}><CreateUserPage /></ProtectedRoute>} />
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/patients" element={<PatientsPage />} />
               <Route path="/doctors" element={<DoctorsPage />} />

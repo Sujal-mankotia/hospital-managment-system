@@ -2,22 +2,70 @@
 @tailwind components;
 @tailwind utilities;
 
+:root, .theme-light {
+  --color-bg: #F5F8FB;
+  --color-surface: #FFFFFF;
+  --color-ink: #101828;
+  --color-slate: #475569;
+  --color-slate-light: #64748B;
+  --color-line: #E2E8F0;
+  --color-primary: #0F6FDE;
+  --color-primary-dark: #0B4FA3;
+  --color-primary-light: #E8F1FD;
+}
+
+.theme-dark {
+  --color-bg: #0B121A;
+  --color-surface: #0F1720;
+  --color-ink: #F8FAFC;
+  --color-slate: #94A3B8;
+  --color-slate-light: #64748B;
+  --color-line: #1E293B;
+  --color-primary: #3B82F6;
+  --color-primary-dark: #2563EB;
+  --color-primary-light: #1E293B;
+}
+
+.theme-emerald {
+  --color-bg: #F0FDF4;
+  --color-surface: #FFFFFF;
+  --color-ink: #064E3B;
+  --color-slate: #374151;
+  --color-slate-light: #4B5563;
+  --color-line: #D1FAE5;
+  --color-primary: #059669;
+  --color-primary-dark: #047857;
+  --color-primary-light: #E6FDF0;
+}
+
+.theme-purple {
+  --color-bg: #FAF5FF;
+  --color-surface: #FFFFFF;
+  --color-ink: #3B0764;
+  --color-slate: #4A5568;
+  --color-slate-light: #718096;
+  --color-line: #F3E8FF;
+  --color-primary: #7C3AED;
+  --color-primary-dark: #6D28D9;
+  --color-primary-light: #F5F3FF;
+}
+
 @layer base {
   html { -webkit-font-smoothing: antialiased; }
   body {
-    @apply bg-bg text-ink font-body;
+    @apply bg-bg text-ink font-body transition-colors duration-300;
   }
   h1, h2, h3, h4 { @apply font-display; }
-  ::selection { background: #0F6FDE33; }
+  ::selection { background: var(--color-primary-light); }
   *:focus-visible {
-    outline: 2px solid #0F6FDE;
+    outline: 2px solid var(--color-primary);
     outline-offset: 2px;
   }
 }
 
 @layer components {
   .card {
-    @apply bg-surface rounded-2xl shadow-card border border-line/70 transition-shadow duration-300;
+    @apply bg-surface rounded-2xl shadow-card border border-line transition-shadow duration-300;
   }
   .card-hover {
     @apply hover:shadow-cardHover hover:-translate-y-0.5 transition-all duration-300;
@@ -28,5 +76,3 @@
   .scrollbar-thin::-webkit-scrollbar { height: 6px; width: 6px; }
   .scrollbar-thin::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 999px; }
 }
-
-.dark body { @apply bg-bgDark text-slate-100; }

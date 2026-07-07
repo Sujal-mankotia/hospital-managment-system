@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { FiMail, FiLock } from 'react-icons/fi'
 import Input from '../../components/common/Input'
@@ -7,20 +8,25 @@ import Button from '../../components/common/Button'
 import { useAuth } from '../../context/AuthContext'
 
 export default function LoginPage() {
-  const { register, handleSubmit, formState: { errors } } = useForm({
-    defaultValues: { email: 'ishaan.kapoor@meridianhealth.example', password: '' },
+  const [apiError, setApiError] = useState('')
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+    defaultValues: { email: '', password: '' },
   })
   const { login } = useAuth()
   const navigate = useNavigate()
 
-  const onSubmit = () => {
-    login()
-    navigate('/dashboard')
+  const onSubmit = async (values) => {
+    try {
+      setApiError('')
+      await login(values)
+      navigate('/dashboard')
+    } catch (error) {
+      setApiError(error.message)
+    }
   }
 
   return (
     <div className="flex min-h-screen bg-bg">
-      {/* Illustration side */}
       <div className="relative hidden w-1/2 items-center justify-center overflow-hidden bg-primary lg:flex">
         <div className="absolute inset-0 opacity-10">
           <svg width="100%" height="100%">
@@ -45,7 +51,7 @@ export default function LoginPage() {
           </svg>
           <h2 className="font-display text-3xl font-bold leading-tight">Care, coordinated.</h2>
           <p className="mt-3 text-sm text-white/80">
-            One dashboard for patients, doctors, appointments and every vital sign that matters — built for the pace of a real hospital floor.
+            One dashboard for patients, doctors, appointments and every vital sign that matters - built for the pace of a real hospital floor.
           </p>
           <div className="mt-10 grid grid-cols-3 gap-4 text-center">
             <div>
@@ -64,7 +70,6 @@ export default function LoginPage() {
         </motion.div>
       </div>
 
-      {/* Form side */}
       <div className="flex w-full items-center justify-center px-6 py-10 lg:w-1/2">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -89,6 +94,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit(onSubmit)} className="mt-7 flex flex-col gap-4">
             <Input
               label="Email address"
+              type="email"
               icon={FiMail}
               placeholder="you@meridianhealth.example"
               error={errors.email?.message}
@@ -98,9 +104,9 @@ export default function LoginPage() {
               label="Password"
               type="password"
               icon={FiLock}
-              placeholder="••••••••"
+              placeholder="Enter your password"
               error={errors.password?.message}
-              {...register('password')}
+              {...register('password', { required: 'Password is required' })}
             />
 
             <div className="flex items-center justify-between text-sm">
@@ -108,14 +114,18 @@ export default function LoginPage() {
                 <input type="checkbox" className="h-4 w-4 rounded border-line text-primary focus:ring-primary/30" />
                 Remember me
               </label>
-              <button type="button" className="font-medium text-primary hover:underline">Forgot password?</button>
+              <Link to="/forgot-password" className="font-medium text-primary hover:underline">Forgot password?</Link>
             </div>
 
-            <Button type="submit" className="mt-2 w-full" size="lg">Sign in</Button>
+            {apiError && <p className="text-sm text-rose">{apiError}</p>}
+
+            <Button type="submit" className="mt-2 w-full" size="lg" disabled={isSubmitting}>
+              {isSubmitting ? 'Signing in...' : 'Sign in'}
+            </Button>
           </form>
 
           <p className="mt-6 text-center text-xs text-slate-light">
-            Frontend demo — no backend connected. Any credentials will sign you in.
+            Accounts are created by an admin after login.
           </p>
         </motion.div>
       </div>

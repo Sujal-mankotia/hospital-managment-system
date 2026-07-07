@@ -3,6 +3,7 @@ import {
   MdOutlineCalendarMonth, MdOutlineScience, MdOutlineMedication,
   MdOutlineReceiptLong, MdOutlineBarChart, MdOutlineSettings, MdLogout,
 } from 'react-icons/md'
+import { FiUserPlus } from 'react-icons/fi'
 
 export const iconMap = {
   dashboard: MdOutlineDashboard,
@@ -14,5 +15,6 @@ export const iconMap = {
   billing: MdOutlineReceiptLong,
   reports: MdOutlineBarChart,
   settings: MdOutlineSettings,
+  userPlus: FiUserPlus,
   logout: MdLogout,
 }

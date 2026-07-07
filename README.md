@@ -1,74 +1,84 @@
-# Data Structures and Algorithms (DSA) Project
+# Hospital Management System
 
-Welcome to our group DSA project! This repository contains our collaborative implementations of various data structures, algorithms, and problem-solving exercises.
+This repository contains a hospital management project with a React frontend and a separate Express backend.
 
-## 👥 Team Members
-
-* **Member 1 (Lead/Owner):** [Name / GitHub Username]
-* **Member 2:** [Name / GitHub Username]
-* **Member 3:** [Name / GitHub Username]
-* **Member 4:** [Name / GitHub Username]
-* **Member 5:** [Name / GitHub Username]
-
----
-
-## 🚀 Project Overview
-
-* **Programming Language(s):** [e.g., C++, Java, Python, JavaScript]
-* **Key Topics:**
-  * [ ] Sorting & Searching Algorithms
-  * [ ] Arrays, Linked Lists, Stacks, Queues
-  * [ ] Trees & Graphs
-  * [ ] Recursion & Dynamic Programming
-  * [ ] Time & Space Complexity Analysis
-
----
-
-## 🛠️ Getting Started
-
-### Prerequisites
-Make sure you have Git installed on your system. You can verify it by running:
-```bash
-git --version
+## Project Folders
+```text
+hospital-ui/    React + Vite frontend
+hospital-api/   Express + MongoDB backend
 ```
 
-### Installation
-Clone this repository to your local machine:
+## Features Started
+- Login
+- Admin-only create user
+- JWT authentication
+- Password hashing
+- Role-based access
+- Forgot password and reset password
+- User model
+- DSA example: emergency patient priority queue
+
+## How To Run From Zero
+Install Node.js first, then clone the repo:
+
 ```bash
-git clone <repository-url>
-cd dsa-project
+git clone https://github.com/Sujal-mankotia/hospital-managment-system.git
+cd hospital-managment-system
 ```
 
----
+Run the backend:
 
-## 🌿 Git Collaboration Workflow (For the Team)
-
-To keep our repository organized and avoid losing code, please follow these steps for every task you work on:
-
-### 1. Update your local main branch
-Before starting any new work, download the latest version of the code:
 ```bash
-git checkout main
-git pull origin main
+cd hospital-api
+npm install
+copy .env.example .env
+npm run dev
 ```
 
-### 2. Create a feature branch
-Never commit directly to `main`. Create a new branch named after the feature or task you are working on:
-```bash
-git checkout -b feature/your-task-name
-```
-*(Example: `git checkout -b feature/binary-search-tree`)*
+Run the frontend in a second terminal:
 
-### 3. Commit and Push changes
-Once you've made your changes and verified they work, stage and commit them:
 ```bash
-git add .
-git commit -m "Brief description of what you added/fixed"
-git push origin feature/your-task-name
+cd hospital-ui
+npm install
+npm run dev
 ```
 
-### 4. Create a Pull Request (PR)
-1. Open our repository page on GitHub.
-2. Click the **Compare & pull request** button next to your pushed branch.
-3. Add a description of your work and request reviews from team members.
-4. Once reviewed and approved, merge the Pull Request into `main`.
+Open the Vite URL:
+
+```text
+http://localhost:5173/
+```
+
+## Where To Start Coding
+Start with the backend auth files:
+
+```text
+hospital-api/models/User.js
+hospital-api/controllers/authController.js
+hospital-api/routes/authRoutes.js
+hospital-api/routes/userRoutes.js
+hospital-api/middleware/authMiddleware.js
+hospital-api/middleware/roleMiddleware.js
+```
+
+Then connect or adjust frontend pages:
+
+```text
+hospital-ui/src/pages/Login/LoginPage.jsx
+hospital-ui/src/pages/Admin/CreateUserPage.jsx
+hospital-ui/src/pages/ForgotPassword/ForgotPasswordPage.jsx
+hospital-ui/src/context/AuthContext.jsx
+hospital-ui/src/api/authApi.js
+```
+
+## Viva Explanation
+- `User.js` defines what a user looks like in MongoDB.
+- Password hashing happens before saving the user, so plain passwords are not stored.
+- Login compares the entered password with the hashed password.
+- JWT is created after successful login/signup.
+- Admin-only create user uses `POST /api/users`.
+- The frontend stores the JWT in `localStorage`.
+- Protected API routes read the JWT from the `Authorization` header.
+- Role middleware blocks users who do not have the required role.
+- Forgot password creates a temporary reset token with an expiry time.
+- DSA is used in the emergency queue, where higher-priority patients come first.

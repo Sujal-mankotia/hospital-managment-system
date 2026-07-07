@@ -31,6 +31,15 @@ npm install
 npm run dev
 ```
 
+If you are testing login and admin user creation, also run the backend from another terminal:
+
+```bash
+cd hospital-managment-system/hospital-api
+npm install
+copy .env.example .env
+npm run dev
+```
+
 Before starting new work, pull the latest code:
 
 ```bash
@@ -81,6 +90,16 @@ src/
 - Signature motif: an ECG/pulse-line divider used on the login screen, loader, and 404 page.
 
 ## Notes for backend integration
-- All dummy data lives in `src/data/*.js` - replace these with API calls (e.g. via a `services/` layer) without changing component props.
+- Authentication calls live in `src/api/authApi.js` and connect to `http://localhost:5000/api` by default.
+- The auth state lives in `src/context/AuthContext.jsx`, which stores the JWT and logged-in user.
+- All dummy dashboard data lives in `src/data/*.js` - replace these with API calls (e.g. via a `services/` layer) without changing component props.
 - Forms (`components/forms/*`) already use React Hook Form and emit plain objects via `onSubmit`, ready to be POSTed to real endpoints.
-- `AuthContext` currently just flips a boolean; swap `login()` for a real request + token storage.
+- Login, signup, forgot password, and reset password are now connected to the backend auth API.
+
+## Auth pages
+```text
+/                  Login
+/admin/users/new    Admin create user
+/forgot-password   Forgot password
+/reset-password/:token
+```

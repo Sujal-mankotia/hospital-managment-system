@@ -25,7 +25,9 @@ function PulseLogo({ collapsed }) {
 }
 
 function NavItem({ item, collapsed }) {
+  const { user } = useAuth()
   const Icon = iconMap[item.icon]
+  if (item.roles && (!user || !item.roles.includes(user.role))) return null
   const content = (
     <>
       <Icon size={19} className="shrink-0" />
