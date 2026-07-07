@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react'
 import { FiPlus, FiEye, FiEdit2, FiTrash2, FiDownload, FiFilter } from 'react-icons/fi'
+import { useSearchParams } from 'react-router-dom'
 import PageHeader from '../../components/common/PageHeader'
 import SearchBar from '../../components/common/SearchBar'
 import Button from '../../components/common/Button'
@@ -20,6 +21,7 @@ const STATUSES = ['All', 'Admitted', 'Critical', 'Stable', 'Discharged']
 
 export default function PatientsPage() {
   const { pushToast } = useUI()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [patients, setPatients] = useState([])
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('All')
@@ -112,6 +114,21 @@ export default function PatientsPage() {
       .catch(() => pushToast({ type: 'error', title: 'Failed to load patients' }))
   }, [])
 
+  useEffect(() => {
+    const patientId = searchParams.get('patientId')
+    if (!patientId || patients.length === 0) return
+
+    const linkedPatient = patients.find((p) => p.id === patientId)
+    if (!linkedPatient) {
+      pushToast({ type: 'error', title: 'Patient not found', description: `No patient record found for ${patientId}.` })
+      setSearchParams({})
+      return
+    }
+
+    setSearch(patientId)
+    setViewPatient(linkedPatient)
+  }, [patients, searchParams, setSearchParams])
+
   return (
     <div>
       <PageHeader
@@ -189,7 +206,7 @@ export default function PatientsPage() {
       </div>
 
       {/* View modal */}
-      <Modal open={!!viewPatient} onClose={() => setViewPatient(null)} title="Patient Details" size="lg">
+      <Modal open={!!viewPatient} onClose={() => { setViewPatient(null); setSearchParams({}) }} title="Patient Details" size="lg">
         {viewPatient && (
           <div>
             <div className="mb-6 flex items-center gap-4">

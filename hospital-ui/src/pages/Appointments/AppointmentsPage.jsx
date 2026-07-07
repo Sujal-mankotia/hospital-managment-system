@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { FiPlus, FiEye, FiXCircle, FiRefreshCw, FiCalendar, FiList } from 'react-icons/fi'
+import { useNavigate } from 'react-router-dom'
 import PageHeader from '../../components/common/PageHeader'
 import SearchBar from '../../components/common/SearchBar'
 import Button from '../../components/common/Button'
@@ -11,12 +12,13 @@ import ConfirmDialog from '../../components/common/ConfirmDialog'
 import EmptyState from '../../components/common/EmptyState'
 import AppointmentForm from '../../components/forms/AppointmentForm'
 import { WaitingListPanel, EmergencyQueuePanel } from '../../components/tables/QueuePanels'
-import { appointments as initialAppointments, waitingList, emergencyQueue } from '../../data/appointments'
+import { waitingList, emergencyQueue } from '../../data/appointments'
 import { doctors } from '../../data/doctors'
 import { useUI } from '../../context/UIContext'
 
 const PAGE_SIZE = 6
 const STATUSES = ['All', 'Confirmed', 'In Progress', 'Waiting', 'Cancelled']
+const API = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
 function CalendarView({ items }) {
   const grouped = items.reduce((acc, a) => { (acc[a.date] ||= []).push(a); return acc }, {})
@@ -44,7 +46,9 @@ function CalendarView({ items }) {
 
 export default function AppointmentsPage() {
   const { pushToast } = useUI()
-  const [appointments, setAppointments] = useState(initialAppointments)
+  const navigate = useNavigate()
+  const [appointments, setAppointments] = useState([])
+  const [patients, setPatients] = useState([])
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('All')
   const [doctorFilter, setDoctorFilter] = useState('All')
@@ -61,30 +65,79 @@ export default function AppointmentsPage() {
     (status === 'All' || a.status === status) &&
     (doctorFilter === 'All' || a.doctor === doctorFilter) &&
     (!dateFilter || a.date === dateFilter) &&
-    (a.patient.toLowerCase().includes(search.toLowerCase()) || a.id.toLowerCase().includes(search.toLowerCase()))
+    (
+      a.patient.toLowerCase().includes(search.toLowerCase()) ||
+      a.id.toLowerCase().includes(search.toLowerCase()) ||
+      a.patientId?.toLowerCase().includes(search.toLowerCase())
+    )
   ), [appointments, search, status, doctorFilter, dateFilter])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
+  const loadAppointments = () => {
+    fetch(`${API}/api/appointments?limit=1000`)
+      .then((r) => r.json())
+      .then((data) => setAppointments(data.items || []))
+      .catch(() => pushToast({ type: 'error', title: 'Failed to load appointments' }))
+  }
+
+  const loadPatients = () => {
+    fetch(`${API}/api/patients?limit=1000`)
+      .then((r) => r.json())
+      .then((data) => setPatients(data.items || []))
+      .catch(() => pushToast({ type: 'error', title: 'Failed to load patients' }))
+  }
+
   const handleBook = (data) => {
-    const newApp = { ...data, id: `AP-${88030 + appointments.length}`, status: 'Confirmed' }
-    setAppointments((a) => [newApp, ...a])
-    setBookOpen(false)
-    pushToast({ type: 'success', title: 'Appointment booked', description: `${newApp.patient} scheduled with ${newApp.doctor}.` })
+    fetch(`${API}/api/appointments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...data, status: 'Confirmed' }),
+    })
+      .then((r) => r.ok ? r.json() : r.json().then((err) => Promise.reject(err)))
+      .then((newApp) => {
+        setAppointments((a) => [newApp, ...a])
+        setBookOpen(false)
+        pushToast({ type: 'success', title: 'Appointment booked', description: `${newApp.patient} scheduled with ${newApp.doctor}.` })
+      })
+      .catch((err) => pushToast({ type: 'error', title: 'Booking failed', description: err.error || String(err) }))
   }
 
   const handleCancel = () => {
-    setAppointments((prev) => prev.map((a) => (a.id === cancelTarget.id ? { ...a, status: 'Cancelled' } : a)))
-    pushToast({ type: 'info', title: 'Appointment cancelled' })
-    setCancelTarget(null)
+    fetch(`${API}/api/appointments/${cancelTarget.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'Cancelled' }),
+    })
+      .then((r) => r.ok ? r.json() : r.json().then((err) => Promise.reject(err)))
+      .then((updated) => {
+        setAppointments((prev) => prev.map((a) => (a.id === updated.id ? updated : a)))
+        pushToast({ type: 'info', title: 'Appointment cancelled' })
+        setCancelTarget(null)
+      })
+      .catch((err) => pushToast({ type: 'error', title: 'Cancel failed', description: err.error || String(err) }))
   }
 
   const handleReschedule = (data) => {
-    setAppointments((prev) => prev.map((a) => (a.id === rescheduleTarget.id ? { ...a, date: data.date, time: data.time, status: 'Confirmed' } : a)))
-    pushToast({ type: 'success', title: 'Appointment rescheduled' })
-    setRescheduleTarget(null)
+    fetch(`${API}/api/appointments/${rescheduleTarget.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...data, status: 'Confirmed' }),
+    })
+      .then((r) => r.ok ? r.json() : r.json().then((err) => Promise.reject(err)))
+      .then((updated) => {
+        setAppointments((prev) => prev.map((a) => (a.id === updated.id ? updated : a)))
+        pushToast({ type: 'success', title: 'Appointment rescheduled' })
+        setRescheduleTarget(null)
+      })
+      .catch((err) => pushToast({ type: 'error', title: 'Reschedule failed', description: err.error || String(err) }))
   }
+
+  useEffect(() => {
+    loadAppointments()
+    loadPatients()
+  }, [])
 
   return (
     <div>
@@ -133,7 +186,15 @@ export default function AppointmentsPage() {
               {paged.map((a) => (
                 <tr key={a.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 id-tag">{a.id}</td>
-                  <td className="px-4 py-3 font-medium text-ink">{a.patient}</td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => navigate(`/patients?patientId=${a.patientId}`)}
+                      className="text-left font-medium text-primary hover:underline"
+                    >
+                      {a.patient}
+                    </button>
+                    <p className="id-tag">{a.patientId}</p>
+                  </td>
                   <td className="px-4 py-3 text-slate">{a.doctor}</td>
                   <td className="px-4 py-3 text-slate">{a.department}</td>
                   <td className="px-4 py-3 text-slate">{a.date}</td>
@@ -159,7 +220,7 @@ export default function AppointmentsPage() {
         {detailsItem && (
           <div className="space-y-3 text-sm">
             {[
-              ['Appointment ID', detailsItem.id], ['Patient', detailsItem.patient], ['Doctor', detailsItem.doctor],
+              ['Appointment ID', detailsItem.id], ['Patient', `${detailsItem.patient} (${detailsItem.patientId})`], ['Doctor', detailsItem.doctor],
               ['Department', detailsItem.department], ['Date', detailsItem.date], ['Time', detailsItem.time],
               ['Priority', detailsItem.priority], ['Status', detailsItem.status],
             ].map(([label, val]) => (
@@ -173,12 +234,12 @@ export default function AppointmentsPage() {
       </Modal>
 
       <Modal open={bookOpen} onClose={() => setBookOpen(false)} title="Book Appointment" size="lg">
-        <AppointmentForm onSubmit={handleBook} onCancel={() => setBookOpen(false)} />
+        <AppointmentForm patients={patients} onSubmit={handleBook} onCancel={() => setBookOpen(false)} />
       </Modal>
 
       <Modal open={!!rescheduleTarget} onClose={() => setRescheduleTarget(null)} title="Reschedule Appointment">
         {rescheduleTarget && (
-          <AppointmentForm defaultValues={rescheduleTarget} onSubmit={handleReschedule} onCancel={() => setRescheduleTarget(null)} submitLabel="Confirm New Slot" />
+          <AppointmentForm patients={patients} defaultValues={rescheduleTarget} onSubmit={handleReschedule} onCancel={() => setRescheduleTarget(null)} submitLabel="Confirm New Slot" />
         )}
       </Modal>
 

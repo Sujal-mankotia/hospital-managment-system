@@ -3,6 +3,7 @@ import dotenv from 'dotenv'
 import mongoose from 'mongoose'
 import cors from 'cors'
 import patientsRouter from './routes/patients.js'
+import appointmentsRouter from './routes/appointments.js'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
@@ -23,6 +24,7 @@ mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopol
 
 app.use('/uploads', express.static(path.join(__dirname, process.env.UPLOAD_DIR || 'uploads')))
 app.use('/api/patients', patientsRouter)
+app.use('/api/appointments', appointmentsRouter)
 
 app.get('/', (req, res) => res.json({ ok: true }))
 
