@@ -51,7 +51,7 @@ export default function PatientsPage() {
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   const handleAdd = (data) => {
-    const API = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+    const API = import.meta.env.VITE_PATIENT_API_URL || 'http://localhost:4000'
     const fd = new FormData()
     fd.append('name', data.name || '')
     fd.append('age', data.age || '')
@@ -73,7 +73,7 @@ export default function PatientsPage() {
   }
 
   const handleEdit = (data) => {
-    const API = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+    const API = import.meta.env.VITE_PATIENT_API_URL || 'http://localhost:4000'
     const fd = new FormData()
     fd.append('name', data.name || '')
     fd.append('age', data.age || '')
@@ -95,7 +95,7 @@ export default function PatientsPage() {
   }
 
   const handleDelete = () => {
-    const API = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+    const API = import.meta.env.VITE_PATIENT_API_URL || 'http://localhost:4000'
     fetch(`${API}/api/patients/${deleteTarget.id}`, { method: 'DELETE' })
       .then((r) => r.json())
       .then(() => {
@@ -107,7 +107,7 @@ export default function PatientsPage() {
   }
 
   useEffect(() => {
-    const API = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+    const API = import.meta.env.VITE_PATIENT_API_URL || 'http://localhost:4000'
     fetch(`${API}/api/patients?limit=1000`)
       .then((r) => r.json())
       .then((data) => setPatients(data.items || []))
