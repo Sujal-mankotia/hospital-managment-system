@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { FiPlus, FiEye, FiEdit2, FiTrash2, FiDownload, FiFilter } from 'react-icons/fi'
 import PageHeader from '../../components/common/PageHeader'
 import SearchBar from '../../components/common/SearchBar'
@@ -12,15 +12,15 @@ import ConfirmDialog from '../../components/common/ConfirmDialog'
 import EmptyState from '../../components/common/EmptyState'
 import MedicalTimeline from '../../components/tables/MedicalTimeline'
 import PatientForm from '../../components/forms/PatientForm'
-import { patients as initialPatients, medicalHistory } from '../../data/patients'
 import { useUI } from '../../context/UIContext'
+import { medicalHistory } from '../../data/patients'
 
 const PAGE_SIZE = 6
 const STATUSES = ['All', 'Admitted', 'Critical', 'Stable', 'Discharged']
 
 export default function PatientsPage() {
   const { pushToast } = useUI()
-  const [patients, setPatients] = useState(initialPatients)
+  const [patients, setPatients] = useState([])
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('All')
   const [sortBy, setSortBy] = useState('name')
@@ -49,29 +49,68 @@ export default function PatientsPage() {
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   const handleAdd = (data) => {
-    const newPatient = {
-      ...data,
-      id: `PT-${20500 + patients.length}`,
-      status: 'Admitted',
-      photo: `https://i.pravatar.cc/100?img=${10 + patients.length}`,
-      age: Number(data.age) || 0,
-    }
-    setPatients((p) => [newPatient, ...p])
-    setAddOpen(false)
-    pushToast({ type: 'success', title: 'Patient added', description: `${newPatient.name} was added to records.` })
+    const API = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+    const fd = new FormData()
+    fd.append('name', data.name || '')
+    fd.append('age', data.age || '')
+    fd.append('gender', data.gender || '')
+    fd.append('bloodGroup', data.bloodGroup || '')
+    fd.append('phone', data.phone || '')
+    fd.append('disease', data.disease || '')
+    fd.append('doctor', data.doctor || '')
+    if (data.photoFile && data.photoFile.length > 0) fd.append('photo', data.photoFile[0])
+
+    fetch(`${API}/api/patients`, { method: 'POST', body: fd })
+      .then((r) => r.json())
+      .then((created) => {
+        setPatients((p) => [created, ...p])
+        setAddOpen(false)
+        pushToast({ type: 'success', title: 'Patient added', description: `${created.name} was added to records.` })
+      })
+      .catch((err) => pushToast({ type: 'error', title: 'Add failed', description: String(err) }))
   }
 
   const handleEdit = (data) => {
-    setPatients((prev) => prev.map((p) => (p.id === editPatient.id ? { ...p, ...data, age: Number(data.age) || p.age } : p)))
-    setEditPatient(null)
-    pushToast({ type: 'success', title: 'Patient updated' })
+    const API = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+    const fd = new FormData()
+    fd.append('name', data.name || '')
+    fd.append('age', data.age || '')
+    fd.append('gender', data.gender || '')
+    fd.append('bloodGroup', data.bloodGroup || '')
+    fd.append('phone', data.phone || '')
+    fd.append('disease', data.disease || '')
+    fd.append('doctor', data.doctor || '')
+    if (data.photoFile && data.photoFile.length > 0) fd.append('photo', data.photoFile[0])
+
+    fetch(`${API}/api/patients/${editPatient.id}`, { method: 'PUT', body: fd })
+      .then((r) => r.json())
+      .then((updated) => {
+        setPatients((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
+        setEditPatient(null)
+        pushToast({ type: 'success', title: 'Patient updated' })
+      })
+      .catch((err) => pushToast({ type: 'error', title: 'Update failed', description: String(err) }))
   }
 
   const handleDelete = () => {
-    setPatients((prev) => prev.filter((p) => p.id !== deleteTarget.id))
-    pushToast({ type: 'info', title: 'Patient removed', description: `${deleteTarget.name}'s record was deleted.` })
-    setDeleteTarget(null)
+    const API = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+    fetch(`${API}/api/patients/${deleteTarget.id}`, { method: 'DELETE' })
+      .then((r) => r.json())
+      .then(() => {
+        setPatients((prev) => prev.filter((p) => p.id !== deleteTarget.id))
+        pushToast({ type: 'info', title: 'Patient removed', description: `${deleteTarget.name}'s record was deleted.` })
+        setDeleteTarget(null)
+      })
+      .catch((err) => pushToast({ type: 'error', title: 'Delete failed', description: String(err) }))
   }
+
+  useEffect(() => {
+    const API = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+    fetch(`${API}/api/patients?limit=1000`)
+      .then((r) => r.json())
+      .then((data) => setPatients(data.items || []))
+      .catch(() => pushToast({ type: 'error', title: 'Failed to load patients' }))
+  }, [])
 
   return (
     <div>
