@@ -6,7 +6,8 @@ $RECYCLE.BIN/
 *.lnk
 
 # --- IDEs and Editors ---
-.vscode/
+.vscode/*
+!.vscode/
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json

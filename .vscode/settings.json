@@ -1,0 +1,12 @@
+{
+  "code-runner.runInTerminal": true,
+  "code-runner.saveFileBeforeRun": true,
+  "code-runner.fileDirectoryAsCwd": false,
+  "code-runner.executorMap": {
+    "javascript": "cd $workspaceRoot && npm run dev",
+    "javascriptreact": "cd $workspaceRoot && npm run dev",
+    "markdown": "cd $workspaceRoot && npm run dev",
+    "typescript": "cd $workspaceRoot && npm run dev",
+    "typescriptreact": "cd $workspaceRoot && npm run dev"
+  }
+}
