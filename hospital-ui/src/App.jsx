@@ -12,6 +12,9 @@ import PatientsPage from './pages/Patients/PatientsPage'
 import DoctorsPage from './pages/Doctors/DoctorsPage'
 import DoctorProfilePage from './pages/Doctors/DoctorProfilePage'
 import AppointmentsPage from './pages/Appointments/AppointmentsPage'
+import BillingPage from './pages/Billing/BillingPage'
+import PharmacyPage from './pages/Pharmacy/PharmacyPage'
+import LabPage from './pages/Lab/LabPage'
 import NotFoundPage from './pages/NotFound/NotFoundPage'
 
 export default function App() {
@@ -37,6 +40,9 @@ export default function App() {
               <Route path="/doctors" element={<DoctorsPage />} />
               <Route path="/doctors/:id" element={<DoctorProfilePage />} />
               <Route path="/appointments" element={<AppointmentsPage />} />
+              <Route path="/billing" element={<BillingPage />} />
+              <Route path="/pharmacy" element={<PharmacyPage />} />
+              <Route path="/lab" element={<LabPage />} />
             </Route>
 
             <Route path="*" element={<NotFoundPage />} />
