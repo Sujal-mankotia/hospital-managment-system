@@ -1,6 +1,15 @@
 import mongoose from 'mongoose'
 import User from '../models/User.js'
 
+async function connectWithUri(uri) {
+  await mongoose.connect(uri, { serverSelectionTimeoutMS: 5000 })
+  console.log('MongoDB connected')
+}
+
+function getFallbackUri() {
+  return process.env.MONGO_URI_FALLBACK || ''
+}
+
 export default async function connectDB() {
   try {
     const mongoUri = process.env.MONGO_URI
@@ -9,8 +18,17 @@ export default async function connectDB() {
       throw new Error('MONGO_URI is missing in .env')
     }
 
-    await mongoose.connect(mongoUri)
-    console.log('MongoDB connected')
+    try {
+      await connectWithUri(mongoUri)
+    } catch (error) {
+      const fallbackUri = getFallbackUri()
+      if (fallbackUri && error.message.includes('querySrv ECONNREFUSED')) {
+        console.warn('MongoDB SRV connection failed, trying fallback direct URI...')
+        await connectWithUri(fallbackUri)
+      } else {
+        throw error
+      }
+    }
 
     // Seed default admin if it doesn't already exist
     const adminEmail = process.env.ADMIN_EMAIL || 'sujalmankotia15@gmail.com'
@@ -33,6 +51,8 @@ export default async function connectDB() {
     }
   } catch (error) {
     console.error(`MongoDB connection failed: ${error.message}`)
-    process.exit(1)
+    return false
   }
+
+  return true
 }
