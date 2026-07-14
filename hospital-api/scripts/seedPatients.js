@@ -6,6 +6,7 @@ import Bill from '../models/Bill.js'
 import Payment from '../models/Payment.js'
 import Medicine from '../models/Medicine.js'
 import LabReport from '../models/LabReport.js'
+import { buildBillNumber } from '../utils/billNumber.js'
 
 dotenv.config()
 
@@ -81,30 +82,33 @@ async function run() {
     }
 
     const bills = await Bill.insertMany([
-        {
-            patientId: insertedPatients[0]._id,
-            items: [
-                { description: 'General Consultation', amount: 450 },
+    {
+      billNumber: buildBillNumber(),
+      patientId: insertedPatients[0]._id,
+      items: [
+        { description: 'General Consultation', amount: 450 },
                 { description: 'CBC Test', amount: 320 },
             ],
             totalAmount: 770,
             amountPaid: 770,
             status: 'paid',
         },
-        {
-            patientId: insertedPatients[1]._id,
-            items: [
-                { description: 'Pulmonology Consultation', amount: 650 },
+    {
+      billNumber: buildBillNumber(),
+      patientId: insertedPatients[1]._id,
+      items: [
+        { description: 'Pulmonology Consultation', amount: 650 },
                 { description: 'Chest X-Ray', amount: 700 },
             ],
             totalAmount: 1350,
             amountPaid: 500,
             status: 'partial',
         },
-        {
-            patientId: insertedPatients[2]._id,
-            items: [
-                { description: 'Dermatology Consultation', amount: 350 },
+    {
+      billNumber: buildBillNumber(),
+      patientId: insertedPatients[2]._id,
+      items: [
+        { description: 'Dermatology Consultation', amount: 350 },
                 { description: 'Skin Allergy Panel', amount: 280 },
             ],
             totalAmount: 630,
@@ -162,7 +166,7 @@ async function run() {
     await LabReport.insertMany([
         {
             patientId: insertedPatients[0]._id,
-            testName: 'Complete Blood Count',
+            testName: 'Complete Blood Count (CBC)',
             result: 'Normal hemoglobin and WBC counts',
             status: 'completed',
             reportDate: daysFromNow(-1),
@@ -176,7 +180,7 @@ async function run() {
         },
         {
             patientId: insertedPatients[2]._id,
-            testName: 'Skin Allergy Panel',
+            testName: 'ECG',
             result: '',
             status: 'pending',
             reportDate: new Date(),

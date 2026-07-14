@@ -23,6 +23,12 @@ const appointmentSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    doctorId: {
+      type: String,
+      default: '',
+      trim: true,
+      index: true,
+    },
     department: {
       type: String,
       required: true,

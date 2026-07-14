@@ -6,19 +6,31 @@ import LabReport from './models/LabReport.js'
 import Medicine from './models/Medicine.js'
 import Patient from './models/Patient.js'
 import Payment from './models/Payment.js'
+import Doctor from './models/Doctor.js'
 import User from './models/User.js'
+import { buildBillNumber } from './utils/billNumber.js'
 
 dotenv.config()
 
+const doctorSchedule = [
+  { day: 'Mon', slots: ['09:00-12:00', '16:00-19:00'] },
+  { day: 'Tue', slots: ['09:00-12:00'] },
+  { day: 'Wed', slots: ['09:00-12:00', '16:00-19:00'] },
+  { day: 'Thu', slots: ['Off'] },
+  { day: 'Fri', slots: ['09:00-12:00', '16:00-19:00'] },
+  { day: 'Sat', slots: ['09:00-13:00'] },
+  { day: 'Sun', slots: ['Off'] },
+]
+
 const doctors = [
-  { name: 'Dr. Rohan Mehta', department: 'Cardiology' },
-  { name: 'Dr. Kavita Rao', department: 'Neurology' },
-  { name: 'Dr. Arjun Verma', department: 'Orthopedics' },
-  { name: 'Dr. Neha Kapoor', department: 'Gynecology' },
-  { name: 'Dr. Priya Sen', department: 'Pediatrics' },
-  { name: 'Dr. Imran Qureshi', department: 'Pulmonology' },
-  { name: 'Dr. Leela Menon', department: 'Dermatology' },
-  { name: 'Dr. Suresh Pillai', department: 'General Medicine' },
+  { id: 'DR-3301', name: 'Dr. Rohan Mehta', department: 'Cardiology', qualification: 'MD, DM Cardiology', experience: '14 yrs', availability: 'Available', status: 'Active', photo: 'https://i.pravatar.cc/120?img=13', rating: 4.8, patients: 42, phone: '+91 98110 22334', email: 'rohan.mehta@meridianhealth.example', schedule: doctorSchedule },
+  { id: 'DR-3302', name: 'Dr. Kavita Rao', department: 'Neurology', qualification: 'MD, DM Neurology', experience: '18 yrs', availability: 'In Surgery', status: 'Active', photo: 'https://i.pravatar.cc/120?img=44', rating: 4.9, patients: 37, phone: '+91 98211 55667', email: 'kavita.rao@meridianhealth.example', schedule: doctorSchedule },
+  { id: 'DR-3303', name: 'Dr. Arjun Verma', department: 'Orthopedics', qualification: 'MS Ortho', experience: '10 yrs', availability: 'Available', status: 'Active', photo: 'https://i.pravatar.cc/120?img=11', rating: 4.6, patients: 51, phone: '+91 99000 11223', email: 'arjun.verma@meridianhealth.example', schedule: doctorSchedule },
+  { id: 'DR-3304', name: 'Dr. Neha Kapoor', department: 'Gynecology', qualification: 'MD Obstetrics & Gynae', experience: '12 yrs', availability: 'On Leave', status: 'On Leave', photo: 'https://i.pravatar.cc/120?img=48', rating: 4.7, patients: 29, phone: '+91 97654 32109', email: 'neha.kapoor@meridianhealth.example', schedule: doctorSchedule },
+  { id: 'DR-3305', name: 'Dr. Priya Sen', department: 'Pediatrics', qualification: 'MD Pediatrics', experience: '9 yrs', availability: 'Available', status: 'Active', photo: 'https://i.pravatar.cc/120?img=25', rating: 4.9, patients: 63, phone: '+91 96543 21098', email: 'priya.sen@meridianhealth.example', schedule: doctorSchedule },
+  { id: 'DR-3306', name: 'Dr. Imran Qureshi', department: 'Pulmonology', qualification: 'MD Pulmonology', experience: '15 yrs', availability: 'Available', status: 'Active', photo: 'https://i.pravatar.cc/120?img=60', rating: 4.5, patients: 33, phone: '+91 95432 10987', email: 'imran.qureshi@meridianhealth.example', schedule: doctorSchedule },
+  { id: 'DR-3307', name: 'Dr. Leela Menon', department: 'Dermatology', qualification: 'MD Dermatology', experience: '7 yrs', availability: 'Available', status: 'Active', photo: 'https://i.pravatar.cc/120?img=30', rating: 4.4, patients: 24, phone: '+91 94321 09876', email: 'leela.menon@meridianhealth.example', schedule: doctorSchedule },
+  { id: 'DR-3308', name: 'Dr. Suresh Pillai', department: 'General Medicine', qualification: 'MBBS, MD', experience: '20 yrs', availability: 'In Surgery', status: 'Active', photo: 'https://i.pravatar.cc/120?img=52', rating: 4.8, patients: 58, phone: '+91 93210 98765', email: 'suresh.pillai@meridianhealth.example', schedule: doctorSchedule },
 ]
 
 const firstNames = [
@@ -34,7 +46,16 @@ const patientStatuses = ['Admitted', 'Critical', 'Stable', 'Discharged']
 const appointmentStatuses = ['Completed', 'Pending', 'Cancelled']
 const billItems = ['Consultation', 'Lab Tests', 'Medicines', 'Surgery']
 const paymentMethods = ['cash', 'card', 'upi', 'insurance']
-const labTests = ['CBC', 'Lipid Profile', 'Liver Function', 'Kidney Function', 'Thyroid', 'Blood Sugar', 'Vitamin D', 'Urine Analysis']
+const labTests = [
+  'Complete Blood Count (CBC)',
+  'Lipid Profile',
+  'Liver Function Test (LFT)',
+  'Kidney Function Test (KFT)',
+  'Thyroid Profile (TSH, T3, T4)',
+  'Blood Sugar (Fasting)',
+  'Vitamin D',
+  'Urine Routine',
+]
 
 function pick(list, index) {
   return list[index % list.length]
@@ -62,6 +83,7 @@ function makePatient(index) {
     phone: `+91 9${String(800000000 + index * 7319).slice(0, 9)}`,
     address: `${12 + index}, ${pick(cities, index)} Main Road, ${pick(cities, index + 2)}`,
     disease: pick(diseases, index),
+    doctorId: doctor.id,
     doctor: doctor.name,
     status: pick(patientStatuses, index),
     admitted: dateString(-index),
@@ -85,14 +107,14 @@ function makePatient(index) {
 
 function reportRemark(testName, index) {
   const remarks = {
-    CBC: ['Hemoglobin and WBC counts are within acceptable range.', 'Mild anemia pattern noted; dietary iron review advised.'],
+    'Complete Blood Count (CBC)': ['Hemoglobin and WBC counts are within acceptable range.', 'Mild anemia pattern noted; dietary iron review advised.'],
     'Lipid Profile': ['LDL is mildly elevated; lifestyle changes recommended.', 'Lipid values are controlled with current plan.'],
-    'Liver Function': ['Liver enzymes are within normal clinical limits.', 'Slight SGPT rise; repeat test suggested in two weeks.'],
-    'Kidney Function': ['Creatinine and urea values are stable.', 'Hydration advised; kidney markers need routine monitoring.'],
-    Thyroid: ['TSH level suggests stable thyroid function.', 'TSH is borderline high; endocrinology follow-up advised.'],
-    'Blood Sugar': ['Fasting sugar is controlled.', 'Post-prandial sugar is elevated; diet plan review advised.'],
+    'Liver Function Test (LFT)': ['Liver enzymes are within normal clinical limits.', 'Slight SGPT rise; repeat test suggested in two weeks.'],
+    'Kidney Function Test (KFT)': ['Creatinine and urea values are stable.', 'Hydration advised; kidney markers need routine monitoring.'],
+    'Thyroid Profile (TSH, T3, T4)': ['TSH level suggests stable thyroid function.', 'TSH is borderline high; endocrinology follow-up advised.'],
+    'Blood Sugar (Fasting)': ['Fasting sugar is controlled.', 'Post-prandial sugar is elevated; diet plan review advised.'],
     'Vitamin D': ['Vitamin D insufficiency detected; supplementation advised.', 'Vitamin D level is adequate.'],
-    'Urine Analysis': ['No significant infection markers detected.', 'Trace protein present; repeat sample advised.'],
+    'Urine Routine': ['No significant infection markers detected.', 'Trace protein present; repeat sample advised.'],
   }
   return pick(remarks[testName], index)
 }
@@ -113,6 +135,7 @@ async function seed() {
   }
 
   await Promise.all([
+    Doctor.deleteMany({}),
     User.deleteMany({}),
     Patient.deleteMany({}),
     Appointment.deleteMany({}),
@@ -122,6 +145,8 @@ async function seed() {
     LabReport.deleteMany({}),
   ])
 
+  const doctorDocs = await Doctor.insertMany(doctors)
+
   const users = await User.create([
     {
       name: process.env.ADMIN_NAME || 'System Admin',
@@ -129,7 +154,7 @@ async function seed() {
       password: process.env.ADMIN_PASSWORD || 'Admin@12345',
       role: 'admin',
     },
-    ...doctors.map((doctor, index) => ({ name: doctor.name, email: `doctor${index + 1}@meridianhealth.test`, password: 'Doctor@12345', role: 'doctor' })),
+    ...doctorDocs.map((doctor, index) => ({ name: doctor.name, email: `doctor${index + 1}@meridianhealth.test`, password: 'Doctor@12345', role: 'doctor' })),
     { name: 'Riya Malhotra', email: 'reception1@meridianhealth.test', password: 'Reception@12345', role: 'receptionist' },
     { name: 'Manish Saini', email: 'reception2@meridianhealth.test', password: 'Reception@12345', role: 'receptionist' },
     { name: 'Anjali Menon', email: 'labtech1@meridianhealth.test', password: 'Lab@12345', role: 'lab_technician' },
@@ -147,6 +172,7 @@ async function seed() {
       id: `AP-${String(88000 + index).padStart(5, '0')}`,
       patientId: patient.id,
       patient: patient.name,
+      doctorId: doctor.id,
       doctor: doctor.name,
       department: doctor.department,
       date: dateString((index % 30) - 10),
@@ -181,6 +207,7 @@ async function seed() {
     const totalAmount = items.reduce((sum, item) => sum + item.amount, 0)
     const isPaid = index % 3 !== 0
     return {
+      billNumber: buildBillNumber(),
       patientId: patient.id,
       items,
       totalAmount,
@@ -218,6 +245,7 @@ async function seed() {
 
   console.log('Database seeded successfully')
   console.table({
+    doctors: doctorDocs.length,
     users: users.length,
     patients: patients.length,
     appointments: appointments.length,

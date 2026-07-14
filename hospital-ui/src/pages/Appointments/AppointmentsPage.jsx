@@ -13,15 +13,27 @@ import EmptyState from '../../components/common/EmptyState'
 import AppointmentForm from '../../components/forms/AppointmentForm'
 import { WaitingListPanel, EmergencyQueuePanel } from '../../components/tables/QueuePanels'
 import { waitingList, emergencyQueue } from '../../data/appointments'
-import { doctors } from '../../data/doctors'
+import { listDoctors } from '../../api/doctorsApi'
 import { useUI } from '../../context/UIContext'
 
 const PAGE_SIZE = 6
 const STATUSES = ['All', 'Confirmed', 'In Progress', 'Waiting', 'Cancelled']
-const API = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+const API = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/$/, '')
+
+function authHeaders() {
+  const token = localStorage.getItem('hospital_token')
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  }
+}
 
 function CalendarView({ items }) {
-  const grouped = items.reduce((acc, a) => { (acc[a.date] ||= []).push(a); return acc }, {})
+  const grouped = items.reduce((accumulator, appointment) => {
+    (accumulator[appointment.date] ||= []).push(appointment)
+    return accumulator
+  }, {})
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {Object.entries(grouped).map(([date, apps]) => (
@@ -31,10 +43,10 @@ function CalendarView({ items }) {
             {new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
           </div>
           <div className="space-y-2">
-            {apps.map((a) => (
-              <div key={a.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-xs">
-                <span className="font-medium text-ink">{a.time} · {a.patient}</span>
-                <Badge tone={a.priority === 'Emergency' ? 'danger' : 'info'}>{a.priority}</Badge>
+            {apps.map((appointment) => (
+              <div key={appointment.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-xs">
+                <span className="font-medium text-ink">{appointment.time} - {appointment.patient}</span>
+                <Badge tone={appointment.priority === 'Emergency' ? 'danger' : 'info'}>{appointment.priority}</Badge>
               </div>
             ))}
           </div>
@@ -49,6 +61,7 @@ export default function AppointmentsPage() {
   const navigate = useNavigate()
   const [appointments, setAppointments] = useState([])
   const [patients, setPatients] = useState([])
+  const [doctors, setDoctors] = useState([])
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('All')
   const [doctorFilter, setDoctorFilter] = useState('All')
@@ -61,14 +74,14 @@ export default function AppointmentsPage() {
   const [rescheduleTarget, setRescheduleTarget] = useState(null)
   const [cancelTarget, setCancelTarget] = useState(null)
 
-  const filtered = useMemo(() => appointments.filter((a) =>
-    (status === 'All' || a.status === status) &&
-    (doctorFilter === 'All' || a.doctor === doctorFilter) &&
-    (!dateFilter || a.date === dateFilter) &&
+  const filtered = useMemo(() => appointments.filter((appointment) =>
+    (status === 'All' || appointment.status === status) &&
+    (doctorFilter === 'All' || appointment.doctor === doctorFilter) &&
+    (!dateFilter || appointment.date === dateFilter) &&
     (
-      a.patient.toLowerCase().includes(search.toLowerCase()) ||
-      a.id.toLowerCase().includes(search.toLowerCase()) ||
-      a.patientId?.toLowerCase().includes(search.toLowerCase())
+      appointment.patient.toLowerCase().includes(search.toLowerCase()) ||
+      appointment.id.toLowerCase().includes(search.toLowerCase()) ||
+      appointment.patientId?.toLowerCase().includes(search.toLowerCase())
     )
   ), [appointments, search, status, doctorFilter, dateFilter])
 
@@ -76,67 +89,74 @@ export default function AppointmentsPage() {
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   const loadAppointments = () => {
-    fetch(`${API}/api/appointments?limit=1000`)
-      .then((r) => r.json())
+    fetch(`${API}/api/appointments?limit=1000`, { headers: authHeaders() })
+      .then((response) => (response.ok ? response.json() : response.json().then((error) => Promise.reject(error))))
       .then((data) => setAppointments(data.items || []))
       .catch(() => pushToast({ type: 'error', title: 'Failed to load appointments' }))
   }
 
   const loadPatients = () => {
-    fetch(`${API}/api/patients?limit=1000`)
-      .then((r) => r.json())
+    fetch(`${API}/api/patients?limit=1000`, { headers: authHeaders() })
+      .then((response) => (response.ok ? response.json() : response.json().then((error) => Promise.reject(error))))
       .then((data) => setPatients(data.items || []))
       .catch(() => pushToast({ type: 'error', title: 'Failed to load patients' }))
+  }
+
+  const loadDoctors = () => {
+    listDoctors()
+      .then((items) => setDoctors(items))
+      .catch((error) => pushToast({ type: 'error', title: 'Failed to load doctors', description: error.message }))
   }
 
   const handleBook = (data) => {
     fetch(`${API}/api/appointments`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(),
       body: JSON.stringify({ ...data, status: 'Confirmed' }),
     })
-      .then((r) => r.ok ? r.json() : r.json().then((err) => Promise.reject(err)))
-      .then((newApp) => {
-        setAppointments((a) => [newApp, ...a])
+      .then((response) => (response.ok ? response.json() : response.json().then((error) => Promise.reject(error))))
+      .then((newAppointment) => {
+        setAppointments((items) => [newAppointment, ...items])
         setBookOpen(false)
-        pushToast({ type: 'success', title: 'Appointment booked', description: `${newApp.patient} scheduled with ${newApp.doctor}.` })
+        pushToast({ type: 'success', title: 'Appointment booked', description: `${newAppointment.patient} scheduled with ${newAppointment.doctor}.` })
       })
-      .catch((err) => pushToast({ type: 'error', title: 'Booking failed', description: err.error || String(err) }))
+      .catch((error) => pushToast({ type: 'error', title: 'Booking failed', description: error.error || String(error) }))
   }
 
   const handleCancel = () => {
     fetch(`${API}/api/appointments/${cancelTarget.id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(),
       body: JSON.stringify({ status: 'Cancelled' }),
     })
-      .then((r) => r.ok ? r.json() : r.json().then((err) => Promise.reject(err)))
+      .then((response) => (response.ok ? response.json() : response.json().then((error) => Promise.reject(error))))
       .then((updated) => {
-        setAppointments((prev) => prev.map((a) => (a.id === updated.id ? updated : a)))
+        setAppointments((items) => items.map((appointment) => (appointment.id === updated.id ? updated : appointment)))
         pushToast({ type: 'info', title: 'Appointment cancelled' })
         setCancelTarget(null)
       })
-      .catch((err) => pushToast({ type: 'error', title: 'Cancel failed', description: err.error || String(err) }))
+      .catch((error) => pushToast({ type: 'error', title: 'Cancel failed', description: error.error || String(error) }))
   }
 
   const handleReschedule = (data) => {
     fetch(`${API}/api/appointments/${rescheduleTarget.id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(),
       body: JSON.stringify({ ...data, status: 'Confirmed' }),
     })
-      .then((r) => r.ok ? r.json() : r.json().then((err) => Promise.reject(err)))
+      .then((response) => (response.ok ? response.json() : response.json().then((error) => Promise.reject(error))))
       .then((updated) => {
-        setAppointments((prev) => prev.map((a) => (a.id === updated.id ? updated : a)))
+        setAppointments((items) => items.map((appointment) => (appointment.id === updated.id ? updated : appointment)))
         pushToast({ type: 'success', title: 'Appointment rescheduled' })
         setRescheduleTarget(null)
       })
-      .catch((err) => pushToast({ type: 'error', title: 'Reschedule failed', description: err.error || String(err) }))
+      .catch((error) => pushToast({ type: 'error', title: 'Reschedule failed', description: error.error || String(error) }))
   }
 
   useEffect(() => {
     loadAppointments()
     loadPatients()
+    loadDoctors()
   }, [])
 
   return (
@@ -155,14 +175,14 @@ export default function AppointmentsPage() {
 
       <div className="card p-5">
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <SearchBar value={search} onChange={(v) => { setSearch(v); setPage(1) }} placeholder="Search by patient or appointment ID…" className="sm:max-w-xs" />
+          <SearchBar value={search} onChange={(value) => { setSearch(value); setPage(1) }} placeholder="Search by patient or appointment ID..." className="sm:max-w-xs" />
           <div className="flex flex-wrap items-center gap-2">
             <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1) }} className="rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium text-slate">
-              {STATUSES.map((s) => <option key={s}>{s}</option>)}
+              {STATUSES.map((item) => <option key={item}>{item}</option>)}
             </select>
             <select value={doctorFilter} onChange={(e) => { setDoctorFilter(e.target.value); setPage(1) }} className="rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium text-slate">
               <option>All</option>
-              {doctors.map((d) => <option key={d.id}>{d.name}</option>)}
+              {doctors.map((doctor) => <option key={doctor.id}>{doctor.name}</option>)}
             </select>
             <input type="date" value={dateFilter} onChange={(e) => { setDateFilter(e.target.value); setPage(1) }} className="rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium text-slate" />
             <div className="flex overflow-hidden rounded-full border border-line">
@@ -183,29 +203,29 @@ export default function AppointmentsPage() {
               { key: 'department', label: 'Department' }, { key: 'date', label: 'Date' }, { key: 'time', label: 'Time' },
               { key: 'priority', label: 'Priority' }, { key: 'status', label: 'Status' }, { key: 'actions', label: 'Actions' },
             ]}>
-              {paged.map((a) => (
-                <tr key={a.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 id-tag">{a.id}</td>
+              {paged.map((appointment) => (
+                <tr key={appointment.id} className="hover:bg-slate-50">
+                  <td className="px-4 py-3 id-tag">{appointment.id}</td>
                   <td className="px-4 py-3">
                     <button
-                      onClick={() => navigate(`/patients?patientId=${a.patientId}`)}
+                      onClick={() => navigate(`/patients?patientId=${appointment.patientId}`)}
                       className="text-left font-medium text-primary hover:underline"
                     >
-                      {a.patient}
+                      {appointment.patient}
                     </button>
-                    <p className="id-tag">{a.patientId}</p>
+                    <p className="id-tag">{appointment.patientId}</p>
                   </td>
-                  <td className="px-4 py-3 text-slate">{a.doctor}</td>
-                  <td className="px-4 py-3 text-slate">{a.department}</td>
-                  <td className="px-4 py-3 text-slate">{a.date}</td>
-                  <td className="px-4 py-3 text-slate">{a.time}</td>
-                  <td className="px-4 py-3"><Badge tone={a.priority === 'Emergency' ? 'danger' : a.priority === 'Follow-up' ? 'neutral' : 'info'}>{a.priority}</Badge></td>
-                  <td className="px-4 py-3"><Badge>{a.status}</Badge></td>
+                  <td className="px-4 py-3 text-slate">{appointment.doctor}</td>
+                  <td className="px-4 py-3 text-slate">{appointment.department}</td>
+                  <td className="px-4 py-3 text-slate">{appointment.date}</td>
+                  <td className="px-4 py-3 text-slate">{appointment.time}</td>
+                  <td className="px-4 py-3"><Badge tone={appointment.priority === 'Emergency' ? 'danger' : appointment.priority === 'Follow-up' ? 'neutral' : 'info'}>{appointment.priority}</Badge></td>
+                  <td className="px-4 py-3"><Badge>{appointment.status}</Badge></td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
-                      <button onClick={() => setDetailsItem(a)} className="rounded-lg p-1.5 text-slate hover:bg-primary-light hover:text-primary" title="View"><FiEye size={15} /></button>
-                      <button onClick={() => setRescheduleTarget(a)} className="rounded-lg p-1.5 text-slate hover:bg-amber-light hover:text-amber" title="Reschedule"><FiRefreshCw size={15} /></button>
-                      <button onClick={() => setCancelTarget(a)} className="rounded-lg p-1.5 text-slate hover:bg-rose-light hover:text-rose" title="Cancel"><FiXCircle size={15} /></button>
+                      <button onClick={() => setDetailsItem(appointment)} className="rounded-lg p-1.5 text-slate hover:bg-primary-light hover:text-primary" title="View"><FiEye size={15} /></button>
+                      <button onClick={() => setRescheduleTarget(appointment)} className="rounded-lg p-1.5 text-slate hover:bg-amber-light hover:text-amber" title="Reschedule"><FiRefreshCw size={15} /></button>
+                      <button onClick={() => setCancelTarget(appointment)} className="rounded-lg p-1.5 text-slate hover:bg-rose-light hover:text-rose" title="Cancel"><FiXCircle size={15} /></button>
                     </div>
                   </td>
                 </tr>
@@ -223,10 +243,10 @@ export default function AppointmentsPage() {
               ['Appointment ID', detailsItem.id], ['Patient', `${detailsItem.patient} (${detailsItem.patientId})`], ['Doctor', detailsItem.doctor],
               ['Department', detailsItem.department], ['Date', detailsItem.date], ['Time', detailsItem.time],
               ['Priority', detailsItem.priority], ['Status', detailsItem.status],
-            ].map(([label, val]) => (
+            ].map(([label, value]) => (
               <div key={label} className="flex items-center justify-between border-b border-line/70 py-2 last:border-0">
                 <span className="text-slate-light">{label}</span>
-                <span className="font-medium text-ink">{val}</span>
+                <span className="font-medium text-ink">{value}</span>
               </div>
             ))}
           </div>
@@ -234,12 +254,12 @@ export default function AppointmentsPage() {
       </Modal>
 
       <Modal open={bookOpen} onClose={() => setBookOpen(false)} title="Book Appointment" size="lg">
-        <AppointmentForm patients={patients} onSubmit={handleBook} onCancel={() => setBookOpen(false)} />
+        <AppointmentForm patients={patients} doctors={doctors} onSubmit={handleBook} onCancel={() => setBookOpen(false)} />
       </Modal>
 
       <Modal open={!!rescheduleTarget} onClose={() => setRescheduleTarget(null)} title="Reschedule Appointment">
         {rescheduleTarget && (
-          <AppointmentForm patients={patients} defaultValues={rescheduleTarget} onSubmit={handleReschedule} onCancel={() => setRescheduleTarget(null)} submitLabel="Confirm New Slot" />
+          <AppointmentForm patients={patients} doctors={doctors} defaultValues={rescheduleTarget} onSubmit={handleReschedule} onCancel={() => setRescheduleTarget(null)} submitLabel="Confirm New Slot" />
         )}
       </Modal>
 

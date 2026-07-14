@@ -1,18 +1,79 @@
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { FiArrowLeft, FiPhone, FiMail, FiStar } from 'react-icons/fi'
 import PageHeader from '../../components/common/PageHeader'
 import Avatar from '../../components/common/Avatar'
 import Badge from '../../components/common/Badge'
 import Button from '../../components/common/Button'
-import { doctors, doctorSchedule } from '../../data/doctors'
-import { patients } from '../../data/patients'
+import EmptyState from '../../components/common/EmptyState'
+import { getDoctor } from '../../api/doctorsApi'
+
+const API = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/$/, '')
+
+function authHeaders() {
+  const token = localStorage.getItem('hospital_token')
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
 
 export default function DoctorProfilePage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const doctor = doctors.find((d) => d.id === id) || doctors[0]
-  const schedule = doctorSchedule[doctor.id] || doctorSchedule['DR-3301']
-  const assigned = patients.filter((p) => p.doctor === doctor.name)
+  const [doctor, setDoctor] = useState(null)
+  const [patients, setPatients] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        setLoading(true)
+        const doctorData = await getDoctor(id)
+        let patientItems = []
+
+        try {
+          const patientResponse = await fetch(`${API}/patients?limit=1000`, {
+            headers: {
+              'Content-Type': 'application/json',
+              ...authHeaders(),
+            },
+          }).then((response) => (response.ok ? response.json() : response.json().then((error) => Promise.reject(error))))
+          patientItems = patientResponse.items || []
+        } catch {
+          patientItems = []
+        }
+
+        setDoctor(doctorData)
+        setPatients(patientItems)
+      } catch {
+        setDoctor(null)
+        setPatients([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadProfile()
+  }, [id])
+
+  const assignedPatients = patients.filter((patient) => patient.doctorId === doctor?.id || patient.doctor === doctor?.name)
+
+  if (loading) {
+    return (
+      <EmptyState
+        title="Loading doctor profile"
+        description="Fetching the selected doctor and related patients from MongoDB..."
+      />
+    )
+  }
+
+  if (!doctor) {
+    return (
+      <EmptyState
+        title="Doctor not found"
+        description="The doctor profile may have been removed or the ID is invalid."
+        action={<Button variant="outline" icon={FiArrowLeft} onClick={() => navigate('/doctors')}>Back to list</Button>}
+      />
+    )
+  }
 
   return (
     <div>
@@ -44,8 +105,8 @@ export default function DoctorProfilePage() {
           <div className="mt-5 border-t border-line pt-5">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-light">Qualifications</p>
             <div className="flex flex-wrap gap-2">
-              {doctor.qualification.split(',').map((q, i) => (
-                <span key={i} className="rounded-full bg-primary-light px-2.5 py-1 text-xs font-medium text-primary">{q.trim()}</span>
+              {(doctor.qualification || '').split(',').filter(Boolean).map((qualification, index) => (
+                <span key={index} className="rounded-full bg-primary-light px-2.5 py-1 text-xs font-medium text-primary">{qualification.trim()}</span>
               ))}
               <span className="rounded-full bg-teal-light px-2.5 py-1 text-xs font-medium text-teal">{doctor.department} Specialist</span>
             </div>
@@ -56,12 +117,12 @@ export default function DoctorProfilePage() {
           <div className="card p-6">
             <h3 className="mb-4 text-sm font-semibold text-ink">Weekly Schedule</h3>
             <div className="grid grid-cols-7 gap-2">
-              {schedule.map((s) => (
-                <div key={s.day} className="rounded-xl border border-line p-2.5 text-center">
-                  <p className="text-xs font-semibold text-ink">{s.day}</p>
+              {(doctor.schedule || []).map((entry) => (
+                <div key={entry.day} className="rounded-xl border border-line p-2.5 text-center">
+                  <p className="text-xs font-semibold text-ink">{entry.day}</p>
                   <div className="mt-2 space-y-1">
-                    {s.slots.map((slot, i) => (
-                      <p key={i} className={`rounded-md px-1 py-1 text-[10px] font-medium ${slot === 'Off' ? 'bg-slate-100 text-slate-light' : 'bg-primary-light text-primary'}`}>
+                    {entry.slots.map((slot, index) => (
+                      <p key={index} className={`rounded-md px-1 py-1 text-[10px] font-medium ${slot === 'Off' ? 'bg-slate-100 text-slate-light' : 'bg-primary-light text-primary'}`}>
                         {slot}
                       </p>
                     ))}
@@ -73,20 +134,20 @@ export default function DoctorProfilePage() {
 
           <div className="card p-6">
             <h3 className="mb-4 text-sm font-semibold text-ink">Assigned Patients</h3>
-            {assigned.length === 0 ? (
-              <p className="text-sm text-slate">No patients currently linked to this profile in the demo data.</p>
+            {assignedPatients.length === 0 ? (
+              <p className="text-sm text-slate">No patients currently linked to this profile.</p>
             ) : (
               <div className="space-y-3">
-                {assigned.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between rounded-xl border border-line p-3">
+                {assignedPatients.map((patient) => (
+                  <div key={patient.id} className="flex items-center justify-between rounded-xl border border-line p-3">
                     <div className="flex items-center gap-3">
-                      <Avatar src={p.photo} name={p.name} size="sm" />
+                      <Avatar src={patient.photo} name={patient.name} size="sm" />
                       <div>
-                        <p className="text-sm font-medium text-ink">{p.name}</p>
-                        <p className="id-tag">{p.id} · {p.disease}</p>
+                        <p className="text-sm font-medium text-ink">{patient.name}</p>
+                        <p className="id-tag">{patient.id} - {patient.disease}</p>
                       </div>
                     </div>
-                    <Badge>{p.status}</Badge>
+                    <Badge>{patient.status}</Badge>
                   </div>
                 ))}
               </div>

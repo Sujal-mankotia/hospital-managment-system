@@ -14,7 +14,7 @@ export default function DoctorCard({ doctor, onView, onEdit, onDelete }) {
       <p className="text-xs text-primary">{doctor.department}</p>
       <p className="mt-1 id-tag">{doctor.id}</p>
       <div className="mt-3 flex items-center gap-1 text-xs text-amber">
-        <FiStar className="fill-amber" size={13} /> {doctor.rating} <span className="text-slate-light">· {doctor.experience}</span>
+        <FiStar className="fill-amber" size={13} /> {doctor.rating} <span className="text-slate-light">- {doctor.experience}</span>
       </div>
       <div className="mt-3 flex items-center justify-between border-t border-line pt-3 text-xs text-slate">
         <span>{doctor.patients} patients</span>

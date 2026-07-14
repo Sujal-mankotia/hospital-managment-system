@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import Input from '../common/Input'
 import Button from '../common/Button'
-
-const API = import.meta.env.VITE_DATA_API_URL || 'http://localhost:4000'
+import { getDoctorSlots } from '../../api/doctorsApi'
 
 export default function AppointmentForm({ defaultValues, patients = [], doctors = [], onSubmit, onCancel, submitLabel = 'Book Appointment' }) {
   const fallbackDoctorId = defaultValues?.doctorId || doctors.find((doctor) => doctor.name === defaultValues?.doctor)?.id || doctors[0]?.id || ''
@@ -22,16 +21,20 @@ export default function AppointmentForm({ defaultValues, patients = [], doctors 
   const [loadingSlots, setLoadingSlots] = useState(false)
 
   useEffect(() => {
+    if (fallbackDoctorId) {
+      setValue('doctorId', fallbackDoctorId)
+    }
+  }, [fallbackDoctorId, setValue])
+
+  useEffect(() => {
     if (!selectedDoctorId || !selectedDate) {
       setSlots([])
       return
     }
 
     setLoadingSlots(true)
-    fetch(`${API}/api/doctors/${selectedDoctorId}/slots?date=${selectedDate}`)
-      .then((r) => r.ok ? r.json() : r.json().then((err) => Promise.reject(err)))
-      .then((data) => {
-        const nextSlots = data.slots || []
+    getDoctorSlots(selectedDoctorId, selectedDate)
+      .then((nextSlots) => {
         setSlots(nextSlots)
         const currentTime = defaultValues?.time
         if (!nextSlots.some((slot) => slot.time === currentTime && slot.available)) {
@@ -62,7 +65,7 @@ export default function AppointmentForm({ defaultValues, patients = [], doctors 
       <label className="block">
         <span className="mb-1.5 block text-sm font-medium text-ink">Doctor</span>
         <select {...register('doctorId')} className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15">
-          {doctors.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+          {doctors.map((d) => <option key={d.id} value={d.id}>{d.name} - {d.department}</option>)}
         </select>
       </label>
       <Input label="Department" value={selectedDoctor?.department || ''} readOnly />

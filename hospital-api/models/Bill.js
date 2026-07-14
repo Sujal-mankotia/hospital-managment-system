@@ -1,4 +1,5 @@
 import mongoose from 'mongoose'
+import { buildBillNumber } from '../utils/billNumber.js'
 
 const billItemSchema = new mongoose.Schema({
   description: { type: String, required: true },
@@ -78,6 +79,10 @@ const billSchema = new mongoose.Schema(
 )
 
 billSchema.pre('save', function updateStatus(next) {
+  if (!this.billNumber) {
+    this.billNumber = buildBillNumber()
+  }
+
   if (this.status === 'cancelled' || this.status === 'refunded') {
     return next()
   }
@@ -90,6 +95,15 @@ billSchema.pre('save', function updateStatus(next) {
     this.status = 'partial'
   }
 
+  next()
+})
+
+billSchema.pre('insertMany', function addBillNumbers(next, docs) {
+  docs.forEach((doc) => {
+    if (!doc.billNumber) {
+      doc.billNumber = buildBillNumber()
+    }
+  })
   next()
 })
 

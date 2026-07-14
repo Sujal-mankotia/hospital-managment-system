@@ -55,6 +55,12 @@ const patientSchema = new mongoose.Schema(
             trim: true,
             default: '',
         },
+        doctorId: {
+            type: String,
+            trim: true,
+            default: '',
+            index: true,
+        },
         doctor: {
             type: String,
             trim: true,

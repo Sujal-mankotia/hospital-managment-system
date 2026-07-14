@@ -2,27 +2,39 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import Input from '../common/Input'
 import Button from '../common/Button'
-import { doctors } from '../../data/doctors'
 
-export default function PatientForm({ defaultValues, onSubmit, onCancel, submitLabel = 'Save Patient' }) {
-  const { register, handleSubmit, setValue, watch } = useForm({ defaultValues })
+export default function PatientForm({ defaultValues, doctors = [], onSubmit, onCancel, submitLabel = 'Save Patient' }) {
+  const fallbackDoctorId = defaultValues?.doctorId || doctors.find((doctor) => doctor.name === defaultValues?.doctor)?.id || doctors[0]?.id || ''
+  const { register, handleSubmit, setValue } = useForm({
+    defaultValues: {
+      ...defaultValues,
+      doctorId: fallbackDoctorId,
+    },
+  })
   const [preview, setPreview] = useState(defaultValues?.photo || '')
 
-  const watchedFile = watch('photoFile')
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) {
+      setPreview('')
+      setValue('photo', '')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const nextValue = typeof reader.result === 'string' ? reader.result : ''
+      setPreview(nextValue)
+      setValue('photo', nextValue, { shouldDirty: true })
+    }
+    reader.readAsDataURL(file)
+  }
 
   useEffect(() => {
-    if (watchedFile && watchedFile.length > 0) {
-      const file = watchedFile[0]
-      const url = URL.createObjectURL(file)
-      setPreview(url)
-      return () => URL.revokeObjectURL(url)
+    if (fallbackDoctorId) {
+      setValue('doctorId', fallbackDoctorId)
     }
-  }, [watchedFile])
-
-  const handleFileChange = (e) => {
-    const file = e.target.files
-    setValue('photoFile', file)
-  }
+  }, [fallbackDoctorId, setValue])
 
   return (
     <form
@@ -47,8 +59,8 @@ export default function PatientForm({ defaultValues, onSubmit, onCancel, submitL
       <Input label="Diagnosis / Condition" placeholder="e.g. Hypertension" {...register('disease')} />
       <label className="block sm:col-span-2">
         <span className="mb-1.5 block text-sm font-medium text-ink">Assigned doctor</span>
-        <select {...register('doctor')} className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15">
-          {doctors.map((d) => <option key={d.id}>{d.name}</option>)}
+        <select {...register('doctorId')} className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15">
+          {doctors.map((d) => <option key={d.id} value={d.id}>{d.name} - {d.department}</option>)}
         </select>
       </label>
 
@@ -61,7 +73,6 @@ export default function PatientForm({ defaultValues, onSubmit, onCancel, submitL
           <div className="flex-1">
             <input type="file" accept="image/*" onChange={handleFileChange} />
             <input type="hidden" {...register('photo')} />
-            <input type="hidden" {...register('photoFile')} />
           </div>
         </div>
       </label>

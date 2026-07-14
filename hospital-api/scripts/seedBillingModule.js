@@ -4,6 +4,7 @@ import Bill from '../models/Bill.js'
 import Medicine from '../models/Medicine.js'
 import LabReport from '../models/LabReport.js'
 import Payment from '../models/Payment.js'
+import { buildBillNumber } from '../utils/billNumber.js'
 
 dotenv.config()
 
@@ -93,6 +94,7 @@ async function run() {
 
   const bills = await Bill.insertMany([
     {
+      billNumber: buildBillNumber(),
       patientId: patientOne._id,
       items: [
         { description: 'Consultation', amount: 500 },
@@ -103,6 +105,7 @@ async function run() {
       status: 'pending',
     },
     {
+      billNumber: buildBillNumber(),
       patientId: patientTwo._id,
       items: [
         { description: 'X-Ray', amount: 1200 },
@@ -135,7 +138,7 @@ async function run() {
   const labReports = await LabReport.insertMany([
     {
       patientId: patientOne._id,
-      testName: 'CBC',
+      testName: 'Complete Blood Count (CBC)',
       result: 'Hemoglobin within normal range',
       status: 'completed',
       reportDate: daysFromNow(-1),
@@ -149,7 +152,7 @@ async function run() {
     },
     {
       patientId: patientOne._id,
-      testName: 'Thyroid Panel',
+      testName: 'Thyroid Profile (TSH, T3, T4)',
       result: 'TSH mildly elevated',
       status: 'completed',
       reportDate: daysFromNow(-3),

@@ -13,16 +13,27 @@ import ConfirmDialog from '../../components/common/ConfirmDialog'
 import EmptyState from '../../components/common/EmptyState'
 import MedicalTimeline from '../../components/tables/MedicalTimeline'
 import PatientForm from '../../components/forms/PatientForm'
+import { listDoctors } from '../../api/doctorsApi'
 import { useUI } from '../../context/UIContext'
 import { medicalHistory } from '../../data/patients'
 
 const PAGE_SIZE = 6
 const STATUSES = ['All', 'Admitted', 'Critical', 'Stable', 'Discharged']
+const API = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/$/, '')
+
+function authHeaders(includeContentType = true) {
+  const token = localStorage.getItem('hospital_token')
+  return {
+    ...(includeContentType ? { 'Content-Type': 'application/json' } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  }
+}
 
 export default function PatientsPage() {
   const { pushToast } = useUI()
   const [searchParams, setSearchParams] = useSearchParams()
   const [patients, setPatients] = useState([])
+  const [doctors, setDoctors] = useState([])
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('All')
   const [sortBy, setSortBy] = useState('name')
@@ -34,9 +45,9 @@ export default function PatientsPage() {
   const [deleteTarget, setDeleteTarget] = useState(null)
 
   const filtered = useMemo(() => {
-    let list = patients.filter((p) =>
-      (status === 'All' || p.status === status) &&
-      (p.name.toLowerCase().includes(search.toLowerCase()) || p.id.toLowerCase().includes(search.toLowerCase()))
+    let list = patients.filter((patient) =>
+      (status === 'All' || patient.status === status) &&
+      (patient.name.toLowerCase().includes(search.toLowerCase()) || patient.id.toLowerCase().includes(search.toLowerCase()))
     )
     list = [...list].sort((a, b) => {
       if (sortBy === 'name') return a.name.localeCompare(b.name)
@@ -50,75 +61,77 @@ export default function PatientsPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  const handleAdd = (data) => {
-    const API = import.meta.env.VITE_PATIENT_API_URL || 'http://localhost:4000'
-    const fd = new FormData()
-    fd.append('name', data.name || '')
-    fd.append('age', data.age || '')
-    fd.append('gender', data.gender || '')
-    fd.append('bloodGroup', data.bloodGroup || '')
-    fd.append('phone', data.phone || '')
-    fd.append('disease', data.disease || '')
-    fd.append('doctor', data.doctor || '')
-    if (data.photoFile && data.photoFile.length > 0) fd.append('photo', data.photoFile[0])
+  const loadDoctors = () => {
+    listDoctors()
+      .then((items) => setDoctors(items))
+      .catch((error) => pushToast({ type: 'error', title: 'Failed to load doctors', description: error.message }))
+  }
 
-    fetch(`${API}/api/patients`, { method: 'POST', body: fd })
-      .then((r) => r.json())
-      .then((created) => {
-        setPatients((p) => [created, ...p])
+  const handleAdd = (data) => {
+    fetch(`${API}/patients`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        ...data,
+        photo: data.photo || '',
+      }),
+    })
+      .then((response) => (response.ok ? response.json() : response.json().then((error) => Promise.reject(error))))
+      .then((createdResponse) => {
+        const created = createdResponse.patient || createdResponse
+        setPatients((items) => [created, ...items])
         setAddOpen(false)
         pushToast({ type: 'success', title: 'Patient added', description: `${created.name} was added to records.` })
       })
-      .catch((err) => pushToast({ type: 'error', title: 'Add failed', description: String(err) }))
+      .catch((error) => pushToast({ type: 'error', title: 'Add failed', description: error.message || error.message || String(error) }))
   }
 
   const handleEdit = (data) => {
-    const API = import.meta.env.VITE_PATIENT_API_URL || 'http://localhost:4000'
-    const fd = new FormData()
-    fd.append('name', data.name || '')
-    fd.append('age', data.age || '')
-    fd.append('gender', data.gender || '')
-    fd.append('bloodGroup', data.bloodGroup || '')
-    fd.append('phone', data.phone || '')
-    fd.append('disease', data.disease || '')
-    fd.append('doctor', data.doctor || '')
-    if (data.photoFile && data.photoFile.length > 0) fd.append('photo', data.photoFile[0])
-
-    fetch(`${API}/api/patients/${editPatient.id}`, { method: 'PUT', body: fd })
-      .then((r) => r.json())
-      .then((updated) => {
-        setPatients((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
+    fetch(`${API}/patients/${editPatient.id}`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        ...data,
+        photo: data.photo || '',
+      }),
+    })
+      .then((response) => (response.ok ? response.json() : response.json().then((error) => Promise.reject(error))))
+      .then((updatedResponse) => {
+        const updated = updatedResponse.patient || updatedResponse
+        setPatients((items) => items.map((patient) => (patient.id === updated.id ? updated : patient)))
         setEditPatient(null)
         pushToast({ type: 'success', title: 'Patient updated' })
       })
-      .catch((err) => pushToast({ type: 'error', title: 'Update failed', description: String(err) }))
+      .catch((error) => pushToast({ type: 'error', title: 'Update failed', description: error.message || String(error) }))
   }
 
   const handleDelete = () => {
-    const API = import.meta.env.VITE_PATIENT_API_URL || 'http://localhost:4000'
-    fetch(`${API}/api/patients/${deleteTarget.id}`, { method: 'DELETE' })
-      .then((r) => r.json())
+    fetch(`${API}/patients/${deleteTarget.id}`, { method: 'DELETE', headers: authHeaders() })
+      .then((response) => (response.ok ? response.json() : response.json().then((error) => Promise.reject(error))))
       .then(() => {
-        setPatients((prev) => prev.filter((p) => p.id !== deleteTarget.id))
+        setPatients((items) => items.filter((patient) => patient.id !== deleteTarget.id))
         pushToast({ type: 'info', title: 'Patient removed', description: `${deleteTarget.name}'s record was deleted.` })
         setDeleteTarget(null)
       })
-      .catch((err) => pushToast({ type: 'error', title: 'Delete failed', description: String(err) }))
+      .catch((error) => pushToast({ type: 'error', title: 'Delete failed', description: error.message || String(error) }))
   }
 
   useEffect(() => {
-    const API = import.meta.env.VITE_PATIENT_API_URL || 'http://localhost:4000'
-    fetch(`${API}/api/patients?limit=1000`)
-      .then((r) => r.json())
+    fetch(`${API}/patients?limit=1000`, { headers: authHeaders() })
+      .then((response) => (response.ok ? response.json() : response.json().then((error) => Promise.reject(error))))
       .then((data) => setPatients(data.items || []))
       .catch(() => pushToast({ type: 'error', title: 'Failed to load patients' }))
+  }, [])
+
+  useEffect(() => {
+    loadDoctors()
   }, [])
 
   useEffect(() => {
     const patientId = searchParams.get('patientId')
     if (!patientId || patients.length === 0) return
 
-    const linkedPatient = patients.find((p) => p.id === patientId)
+    const linkedPatient = patients.find((patient) => patient.id === patientId)
     if (!linkedPatient) {
       pushToast({ type: 'error', title: 'Patient not found', description: `No patient record found for ${patientId}.` })
       setSearchParams({})
@@ -140,18 +153,18 @@ export default function PatientsPage() {
 
       <div className="card p-5">
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <SearchBar value={search} onChange={(v) => { setSearch(v); setPage(1) }} placeholder="Search by name or patient ID…" className="sm:max-w-xs" />
+          <SearchBar value={search} onChange={(value) => { setSearch(value); setPage(1) }} placeholder="Search by name or patient ID..." className="sm:max-w-xs" />
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1.5 text-slate-light"><FiFilter size={14} /></div>
-            {STATUSES.map((s) => (
+            {STATUSES.map((item) => (
               <button
-                key={s}
-                onClick={() => { setStatus(s); setPage(1) }}
+                key={item}
+                onClick={() => { setStatus(item); setPage(1) }}
                 className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                  status === s ? 'bg-primary text-white' : 'bg-slate-100 text-slate hover:bg-slate-200'
+                  status === item ? 'bg-primary text-white' : 'bg-slate-100 text-slate hover:bg-slate-200'
                 }`}
               >
-                {s}
+                {item}
               </button>
             ))}
             <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium text-slate">
@@ -174,27 +187,27 @@ export default function PatientsPage() {
               { key: 'gender', label: 'Gender' }, { key: 'bloodGroup', label: 'Blood Grp' }, { key: 'phone', label: 'Phone' },
               { key: 'disease', label: 'Disease' }, { key: 'doctor', label: 'Doctor' }, { key: 'status', label: 'Status' }, { key: 'actions', label: 'Actions' },
             ]}>
-              {paged.map((p) => (
-                <tr key={p.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 id-tag">{p.id}</td>
+              {paged.map((patient) => (
+                <tr key={patient.id} className="hover:bg-slate-50">
+                  <td className="px-4 py-3 id-tag">{patient.id}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <Avatar src={p.photo} name={p.name} size="sm" />
-                      <span className="font-medium text-ink">{p.name}</span>
+                      <Avatar src={patient.photo} name={patient.name} size="sm" />
+                      <span className="font-medium text-ink">{patient.name}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-slate">{p.age}</td>
-                  <td className="px-4 py-3 text-slate">{p.gender}</td>
-                  <td className="px-4 py-3 text-slate">{p.bloodGroup}</td>
-                  <td className="px-4 py-3 text-slate">{p.phone}</td>
-                  <td className="px-4 py-3 text-slate">{p.disease}</td>
-                  <td className="px-4 py-3 text-slate">{p.doctor}</td>
-                  <td className="px-4 py-3"><Badge>{p.status}</Badge></td>
+                  <td className="px-4 py-3 text-slate">{patient.age}</td>
+                  <td className="px-4 py-3 text-slate">{patient.gender}</td>
+                  <td className="px-4 py-3 text-slate">{patient.bloodGroup}</td>
+                  <td className="px-4 py-3 text-slate">{patient.phone}</td>
+                  <td className="px-4 py-3 text-slate">{patient.disease}</td>
+                  <td className="px-4 py-3 text-slate">{patient.doctor}</td>
+                  <td className="px-4 py-3"><Badge>{patient.status}</Badge></td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
-                      <button onClick={() => setViewPatient(p)} className="rounded-lg p-1.5 text-slate hover:bg-primary-light hover:text-primary" title="View"><FiEye size={15} /></button>
-                      <button onClick={() => setEditPatient(p)} className="rounded-lg p-1.5 text-slate hover:bg-primary-light hover:text-primary" title="Edit"><FiEdit2 size={15} /></button>
-                      <button onClick={() => setDeleteTarget(p)} className="rounded-lg p-1.5 text-slate hover:bg-rose-light hover:text-rose" title="Delete"><FiTrash2 size={15} /></button>
+                      <button onClick={() => setViewPatient(patient)} className="rounded-lg p-1.5 text-slate hover:bg-primary-light hover:text-primary" title="View"><FiEye size={15} /></button>
+                      <button onClick={() => setEditPatient(patient)} className="rounded-lg p-1.5 text-slate hover:bg-primary-light hover:text-primary" title="Edit"><FiEdit2 size={15} /></button>
+                      <button onClick={() => setDeleteTarget(patient)} className="rounded-lg p-1.5 text-slate hover:bg-rose-light hover:text-rose" title="Delete"><FiTrash2 size={15} /></button>
                     </div>
                   </td>
                 </tr>
@@ -205,7 +218,6 @@ export default function PatientsPage() {
         )}
       </div>
 
-      {/* View modal */}
       <Modal open={!!viewPatient} onClose={() => { setViewPatient(null); setSearchParams({}) }} title="Patient Details" size="lg">
         {viewPatient && (
           <div>
@@ -221,10 +233,10 @@ export default function PatientsPage() {
               {[
                 ['Age', viewPatient.age], ['Gender', viewPatient.gender], ['Blood Group', viewPatient.bloodGroup],
                 ['Phone', viewPatient.phone], ['Ward', viewPatient.ward], ['Doctor', viewPatient.doctor],
-              ].map(([label, val]) => (
+              ].map(([label, value]) => (
                 <div key={label}>
                   <p className="text-xs text-slate-light">{label}</p>
-                  <p className="text-sm font-medium text-ink">{val}</p>
+                  <p className="text-sm font-medium text-ink">{value}</p>
                 </div>
               ))}
             </div>
@@ -234,14 +246,12 @@ export default function PatientsPage() {
         )}
       </Modal>
 
-      {/* Add modal */}
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add New Patient" size="lg">
-        <PatientForm onSubmit={handleAdd} onCancel={() => setAddOpen(false)} submitLabel="Add Patient" />
+        <PatientForm doctors={doctors} onSubmit={handleAdd} onCancel={() => setAddOpen(false)} submitLabel="Add Patient" />
       </Modal>
 
-      {/* Edit modal */}
       <Modal open={!!editPatient} onClose={() => setEditPatient(null)} title="Edit Patient" size="lg">
-        {editPatient && <PatientForm defaultValues={editPatient} onSubmit={handleEdit} onCancel={() => setEditPatient(null)} submitLabel="Save Changes" />}
+        {editPatient && <PatientForm defaultValues={editPatient} doctors={doctors} onSubmit={handleEdit} onCancel={() => setEditPatient(null)} submitLabel="Save Changes" />}
       </Modal>
 
       <ConfirmDialog
