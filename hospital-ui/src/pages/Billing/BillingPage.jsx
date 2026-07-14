@@ -312,7 +312,7 @@ export default function BillingPage() {
                 const balance = Math.max(0, total - paid)
                 const createdByName = bill.createdBy?.name || '—'
                 return (
-                  <tr key={bill._id} className="hover:bg-slate-50">
+                  <tr key={bill._id} className="group transition-colors hover:bg-primary-light/40">
                     <td className="px-4 py-3">
                       <span className="font-mono text-xs font-medium text-ink">{bill.billNumber || bill._id.slice(-6)}</span>
                     </td>
@@ -334,8 +334,8 @@ export default function BillingPage() {
                     </td>
                     <td className="px-4 py-3 text-slate">{new Date(bill.createdAt).toLocaleDateString()}</td>
                     <td className="px-4 py-3 text-slate">{createdByName}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5">
+                    <td className="px-4 py-3 align-top">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <Button
                           type="button"
                           size="sm"
@@ -388,7 +388,7 @@ export default function BillingPage() {
                   onChange={(e) => { setPatientSearch(e.target.value); setPatientDropdownOpen(true) }}
                   onFocus={() => setPatientDropdownOpen(true)}
                   placeholder="Search by name, UHID, or phone…"
-                  className="w-full rounded-xl border border-line bg-surface py-2.5 pl-10 pr-10 text-sm text-ink placeholder:text-slate-light"
+                  className="w-full rounded-xl border border-line bg-surface py-2.5 pl-10 pr-10 text-sm text-ink placeholder:text-slate-light transition-colors hover:border-primary/40 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
                 />
                 {patientSearch && (
                   <button

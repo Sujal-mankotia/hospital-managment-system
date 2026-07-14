@@ -194,7 +194,14 @@ export default function LabPage() {
     <form className="space-y-4" onSubmit={onSubmit}>
       <label className="block">
         <span className="mb-1.5 block text-sm font-medium text-ink">Patient</span>
-        <select name="patientId" value={form.patientId} onChange={handleFieldChange} disabled={Boolean(editReport)} required className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm text-ink disabled:bg-slate-100">
+        <select
+          name="patientId"
+          value={form.patientId}
+          onChange={handleFieldChange}
+          disabled={Boolean(editReport)}
+          required
+          className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm text-ink transition-colors hover:border-primary/40 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15 disabled:bg-slate-100"
+        >
           <option value="">Select patient</option>
           {patients.map((patient) => (
             <option key={patient.id || patient._id} value={patient.id || patient._id}>{patient.name}</option>
@@ -203,7 +210,13 @@ export default function LabPage() {
       </label>
       <label className="block">
         <span className="mb-1.5 block text-sm font-medium text-ink">Report Type</span>
-        <select name="testName" value={form.testName} onChange={handleFieldChange} required className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm text-ink">
+        <select
+          name="testName"
+          value={form.testName}
+          onChange={handleFieldChange}
+          required
+          className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm text-ink transition-colors hover:border-primary/40 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
+        >
           <option value="">Select report type</option>
           {REPORT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
         </select>
@@ -212,7 +225,12 @@ export default function LabPage() {
       <Input label="Remarks" name="remarks" value={form.remarks} onChange={handleFieldChange} placeholder="Optional notes" />
       <label className="block">
         <span className="mb-1.5 block text-sm font-medium text-ink">Status</span>
-        <select name="status" value={form.status} onChange={handleFieldChange} className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm text-ink">
+        <select
+          name="status"
+          value={form.status}
+          onChange={handleFieldChange}
+          className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm text-ink transition-colors hover:border-primary/40 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
+        >
           <option value="pending">Pending</option>
           <option value="completed">Completed</option>
         </select>
@@ -249,15 +267,21 @@ export default function LabPage() {
           <>
             <DataTable columns={[{ key: 'patient', label: 'Patient' }, { key: 'test', label: 'Report Type' }, { key: 'status', label: 'Status' }, { key: 'date', label: 'Date' }, { key: 'actions', label: 'Actions' }]}>
               {paged.map((report) => (
-                <tr key={report._id} className="hover:bg-slate-50">
+                <tr key={report._id} className="group transition-colors hover:bg-primary-light/40">
                   <td className="px-4 py-3"><p className="font-medium text-ink">{patientNameMap[report.patientId] || 'Unknown patient'}</p><p className="id-tag">{report.patientId}</p></td>
                   <td className="px-4 py-3 text-slate">{report.testName}</td>
                   <td className="px-4 py-3"><Badge tone={report.status === 'completed' ? 'success' : 'warning'}>{report.status}</Badge></td>
                   <td className="px-4 py-3 text-slate">{new Date(report.reportDate || report.createdAt).toLocaleDateString()}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col gap-2 xl:flex-row xl:items-center">
-                      <input value={resultDrafts[report._id] ?? report.result ?? ''} onChange={(event) => setResultDrafts((prev) => ({ ...prev, [report._id]: event.target.value }))} placeholder="Enter result" disabled={report.status === 'completed'} className="w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-ink disabled:bg-slate-100 xl:max-w-[170px]" />
-                      <div className="flex flex-wrap gap-2">
+                  <td className="px-4 py-3 align-top">
+                    <div className="flex flex-col gap-3 xl:flex-row xl:items-start">
+                      <input
+                        value={resultDrafts[report._id] ?? report.result ?? ''}
+                        onChange={(event) => setResultDrafts((prev) => ({ ...prev, [report._id]: event.target.value }))}
+                        placeholder="Enter result"
+                        disabled={report.status === 'completed'}
+                        className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink shadow-sm transition-colors hover:border-primary/40 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15 disabled:bg-slate-100 xl:min-w-[200px]"
+                      />
+                      <div className="flex flex-wrap gap-2 xl:shrink-0">
                         <Button type="button" size="sm" variant="secondary" icon={FiCheckCircle} onClick={() => handleCompleteReport(report)} disabled={report.status === 'completed'}>{report.status === 'completed' ? 'Completed' : 'Complete'}</Button>
                         <Button type="button" size="sm" variant="outline" icon={FiEye} onClick={() => setViewReport(report)}>View</Button>
                         <Button type="button" size="sm" variant="outline" icon={FiEdit2} onClick={() => openEdit(report)}>Edit</Button>

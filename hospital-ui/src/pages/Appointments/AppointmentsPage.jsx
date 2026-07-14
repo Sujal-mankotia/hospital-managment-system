@@ -204,7 +204,7 @@ export default function AppointmentsPage() {
               { key: 'priority', label: 'Priority' }, { key: 'status', label: 'Status' }, { key: 'actions', label: 'Actions' },
             ]}>
               {paged.map((appointment) => (
-                <tr key={appointment.id} className="hover:bg-slate-50">
+                <tr key={appointment.id} className="group transition-colors hover:bg-primary-light/40">
                   <td className="px-4 py-3 id-tag">{appointment.id}</td>
                   <td className="px-4 py-3">
                     <button
@@ -221,8 +221,8 @@ export default function AppointmentsPage() {
                   <td className="px-4 py-3 text-slate">{appointment.time}</td>
                   <td className="px-4 py-3"><Badge tone={appointment.priority === 'Emergency' ? 'danger' : appointment.priority === 'Follow-up' ? 'neutral' : 'info'}>{appointment.priority}</Badge></td>
                   <td className="px-4 py-3"><Badge>{appointment.status}</Badge></td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1.5">
+                  <td className="px-4 py-3 align-top">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <button onClick={() => setDetailsItem(appointment)} className="rounded-lg p-1.5 text-slate hover:bg-primary-light hover:text-primary" title="View"><FiEye size={15} /></button>
                       <button onClick={() => setRescheduleTarget(appointment)} className="rounded-lg p-1.5 text-slate hover:bg-amber-light hover:text-amber" title="Reschedule"><FiRefreshCw size={15} /></button>
                       <button onClick={() => setCancelTarget(appointment)} className="rounded-lg p-1.5 text-slate hover:bg-rose-light hover:text-rose" title="Cancel"><FiXCircle size={15} /></button>

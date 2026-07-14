@@ -114,11 +114,11 @@ export default function DoctorsPage() {
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <SearchBar value={search} onChange={(value) => { setSearch(value); setPage(1) }} placeholder="Search by name or doctor ID..." className="sm:max-w-xs" />
           <div className="flex flex-wrap items-center gap-2">
-            <select value={dept} onChange={(e) => { setDept(e.target.value); setPage(1) }} className="rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium text-slate">
+            <select value={dept} onChange={(e) => { setDept(e.target.value); setPage(1) }} className="rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium text-slate transition-colors hover:border-primary/40 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15">
               <option>All</option>
               {departmentOptions.map((department) => <option key={department}>{department}</option>)}
             </select>
-            <select value={availability} onChange={(e) => { setAvailability(e.target.value); setPage(1) }} className="rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium text-slate">
+            <select value={availability} onChange={(e) => { setAvailability(e.target.value); setPage(1) }} className="rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium text-slate transition-colors hover:border-primary/40 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15">
               <option>All</option>
               <option>Available</option>
               <option>In Surgery</option>
@@ -148,7 +148,7 @@ export default function DoctorsPage() {
             { key: 'availability', label: 'Availability' }, { key: 'patients', label: 'Patients' }, { key: 'status', label: 'Status' }, { key: 'actions', label: 'Actions' },
           ]}>
             {paged.map((doctor) => (
-              <tr key={doctor.id} className="hover:bg-slate-50">
+              <tr key={doctor.id} className="group transition-colors hover:bg-primary-light/40">
                 <td className="px-4 py-3 id-tag">{doctor.id}</td>
                 <td className="px-4 py-3"><div className="flex items-center gap-3"><Avatar src={doctor.photo} name={doctor.name} size="sm" /><span className="font-medium text-ink">{doctor.name}</span></div></td>
                 <td className="px-4 py-3 text-slate">{doctor.department}</td>
@@ -157,8 +157,8 @@ export default function DoctorsPage() {
                 <td className="px-4 py-3"><Badge>{doctor.availability}</Badge></td>
                 <td className="px-4 py-3 text-slate">{doctor.patients}</td>
                 <td className="px-4 py-3"><Badge>{doctor.status}</Badge></td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-1.5">
+                <td className="px-4 py-3 align-top">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <button onClick={() => navigate(`/doctors/${doctor.id}`)} className="rounded-lg p-1.5 text-slate hover:bg-primary-light hover:text-primary"><FiEye size={15} /></button>
                     <button onClick={() => setEditDoctor(doctor)} className="rounded-lg p-1.5 text-slate hover:bg-primary-light hover:text-primary"><FiEdit2 size={15} /></button>
                     <button onClick={() => setDeleteTarget(doctor)} className="rounded-lg p-1.5 text-slate hover:bg-rose-light hover:text-rose"><FiTrash2 size={15} /></button>
