@@ -4,6 +4,7 @@ export const navItems = [
   { key: 'doctors', label: 'Doctors', path: '/doctors', icon: 'doctors', disabled: false },
   { key: 'appointments', label: 'Appointments', path: '/appointments', icon: 'appointments', disabled: false },
   { key: 'create-user', label: 'Create User', path: '/admin/users/new', icon: 'userPlus', disabled: false, roles: ['admin'] },
+  { key: 'users-list', label: 'Users List', path: '/admin/users', icon: 'users', disabled: false, roles: ['admin'] },
   { key: 'lab', label: 'Lab', path: '/lab', icon: 'lab', disabled: false },
   { key: 'pharmacy', label: 'Pharmacy', path: '/pharmacy', icon: 'pharmacy', disabled: false },
   { key: 'billing', label: 'Billing', path: '/billing', icon: 'billing', disabled: false },

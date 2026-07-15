@@ -7,6 +7,7 @@ import LoginPage from './pages/Login/LoginPage'
 import ForgotPasswordPage from './pages/ForgotPassword/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ForgotPassword/ResetPasswordPage'
 import CreateUserPage from './pages/Admin/CreateUserPage'
+import UsersPage from './pages/Admin/UsersPage'
 import DashboardPage from './pages/Dashboard/DashboardPage'
 import PatientsPage from './pages/Patients/PatientsPage'
 import DoctorsPage from './pages/Doctors/DoctorsPage'
@@ -16,6 +17,10 @@ import BillingPage from './pages/Billing/BillingPage'
 import PharmacyPage from './pages/Pharmacy/PharmacyPage'
 import LabPage from './pages/Lab/LabPage'
 import NotFoundPage from './pages/NotFound/NotFoundPage'
+
+// Role groups
+const STAFF = ['admin', 'doctor', 'receptionist']
+const ALL_ROLES = ['admin', 'doctor', 'receptionist', 'patient']
 
 export default function App() {
   return (
@@ -34,15 +39,21 @@ export default function App() {
                 </ProtectedRoute>
               }
             >
+              {/* Admin-only routes */}
               <Route path="/admin/users/new" element={<ProtectedRoute allowedRoles={['admin']}><CreateUserPage /></ProtectedRoute>} />
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/patients" element={<PatientsPage />} />
-              <Route path="/doctors" element={<DoctorsPage />} />
-              <Route path="/doctors/:id" element={<DoctorProfilePage />} />
-              <Route path="/appointments" element={<AppointmentsPage />} />
-              <Route path="/billing" element={<BillingPage />} />
-              <Route path="/pharmacy" element={<PharmacyPage />} />
-              <Route path="/lab" element={<LabPage />} />
+              <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><UsersPage /></ProtectedRoute>} />
+
+              {/* All authenticated users */}
+              <Route path="/dashboard" element={<ProtectedRoute allowedRoles={ALL_ROLES}><DashboardPage /></ProtectedRoute>} />
+              <Route path="/doctors" element={<ProtectedRoute allowedRoles={ALL_ROLES}><DoctorsPage /></ProtectedRoute>} />
+              <Route path="/doctors/:id" element={<ProtectedRoute allowedRoles={ALL_ROLES}><DoctorProfilePage /></ProtectedRoute>} />
+              <Route path="/appointments" element={<ProtectedRoute allowedRoles={ALL_ROLES}><AppointmentsPage /></ProtectedRoute>} />
+
+              {/* Staff + admin only */}
+              <Route path="/patients" element={<ProtectedRoute allowedRoles={STAFF}><PatientsPage /></ProtectedRoute>} />
+              <Route path="/billing" element={<ProtectedRoute allowedRoles={STAFF}><BillingPage /></ProtectedRoute>} />
+              <Route path="/pharmacy" element={<ProtectedRoute allowedRoles={STAFF}><PharmacyPage /></ProtectedRoute>} />
+              <Route path="/lab" element={<ProtectedRoute allowedRoles={STAFF}><LabPage /></ProtectedRoute>} />
             </Route>
 
             <Route path="*" element={<NotFoundPage />} />

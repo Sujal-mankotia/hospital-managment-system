@@ -18,7 +18,7 @@ function sendAuthResponse(res, user, statusCode = 200) {
 
 export async function signup(req, res) {
   try {
-    const { name, email, password, role } = req.body
+    const { name, email, password } = req.body
 
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Name, email and password are required' })
@@ -29,7 +29,8 @@ export async function signup(req, res) {
       return res.status(409).json({ message: 'Email already registered' })
     }
 
-    const user = await User.create({ name, email, password, role })
+    // Bug #4 fix: always force 'patient' on public signup – role can only be set by admin
+    const user = await User.create({ name, email, password, role: 'patient' })
     sendAuthResponse(res, user, 201)
   } catch (error) {
     res.status(500).json({ message: 'Signup failed', error: error.message })

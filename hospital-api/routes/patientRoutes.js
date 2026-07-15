@@ -12,8 +12,8 @@ import { allowRoles } from '../middleware/roleMiddleware.js'
 const router = express.Router()
 
 router.post('/', protect, allowRoles('admin', 'doctor', 'receptionist'), createPatient)
-router.get('/', protect, allowRoles('admin', 'doctor', 'receptionist'), getPatients)
-router.get('/:id', protect, allowRoles('admin', 'doctor', 'receptionist'), getPatientById)
+router.get('/', protect, allowRoles('admin', 'doctor', 'receptionist', 'patient'), getPatients)
+router.get('/:id', protect, allowRoles('admin', 'doctor', 'receptionist', 'patient'), getPatientById)
 router.put('/:id', protect, allowRoles('admin', 'doctor', 'receptionist'), updatePatient)
 router.delete('/:id', protect, allowRoles('admin', 'doctor', 'receptionist'), deletePatient)
 
