@@ -3,19 +3,74 @@ import Patient from '../models/Patient.js'
 import { sendControllerError } from '../utils/controllerErrors.js'
 import { findDoctorByReference, getDoctorReferencePayload, normalizeReferenceValue } from '../utils/doctorReference.js'
 
-function buildFilter(query) {
-  const { q = '', status = '', doctor = '', date = '' } = query
-  const filter = {}
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
 
-  if (status) filter.status = status
-  if (doctor) filter.doctor = doctor
-  if (date) filter.date = date
-  if (q) {
-    filter.$or = [
-      { patient: new RegExp(q, 'i') },
-      { patientId: new RegExp(q, 'i') },
-      { id: new RegExp(q, 'i') },
-    ]
+function buildReferenceFilter(idField, nameField, value) {
+  const cleanValue = normalizeReferenceValue(value)
+  if (!cleanValue) {
+    return null
+  }
+
+  const filters = [{ [idField]: cleanValue }]
+  if (nameField) {
+    filters.push({ [nameField]: new RegExp(escapeRegex(cleanValue), 'i') })
+  }
+
+  return filters.length === 1 ? filters[0] : { $or: filters }
+}
+
+function buildFilter(query) {
+  const {
+    q = '',
+    status = '',
+    doctorId = '',
+    doctor = '',
+    patientId = '',
+    patient = '',
+    date = '',
+  } = query
+
+  const filter = {}
+  const andConditions = []
+
+  if (status && status !== 'All') andConditions.push({ status })
+  if (date) andConditions.push({ date })
+
+  const rawDoctor = doctorId || doctor
+  if (rawDoctor && rawDoctor !== 'All') {
+    const doctorFilter = buildReferenceFilter('doctorId', 'doctor', rawDoctor)
+    if (doctorFilter) andConditions.push(doctorFilter)
+  }
+
+  const rawPatient = patientId || patient
+  if (rawPatient && rawPatient !== 'All') {
+    const patientFilter = buildReferenceFilter('patientId', 'patient', rawPatient)
+    if (patientFilter) andConditions.push(patientFilter)
+  }
+
+  const searchValue = normalizeReferenceValue(q)
+  if (searchValue && searchValue !== 'All') {
+    const search = new RegExp(escapeRegex(searchValue), 'i')
+    andConditions.push({
+      $or: [
+        { patient: search },
+        { patientId: search },
+        { doctor: search },
+        { doctorId: search },
+        { department: search },
+        { id: search },
+      ],
+    })
+  }
+
+  if (andConditions.length === 1) {
+    return andConditions[0]
+  }
+
+  if (andConditions.length > 1) {
+    filter.$and = andConditions
   }
 
   return filter

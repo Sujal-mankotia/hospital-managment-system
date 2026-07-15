@@ -9,6 +9,7 @@ export default function AppointmentForm({ defaultValues, patients = [], doctors 
   const { register, handleSubmit, watch, setValue } = useForm({
     defaultValues: {
       priority: 'Routine',
+      status: 'Confirmed',
       ...defaultValues,
       doctorId: fallbackDoctorId,
     },
@@ -35,10 +36,22 @@ export default function AppointmentForm({ defaultValues, patients = [], doctors 
     setLoadingSlots(true)
     getDoctorSlots(selectedDoctorId, selectedDate)
       .then((nextSlots) => {
-        setSlots(nextSlots)
+        const isSameAppointmentSlot =
+          defaultValues?.id &&
+          (selectedDoctorId === defaultValues.doctorId || selectedDoctor?.name === defaultValues.doctor) &&
+          selectedDate === defaultValues.date
+
+        const mappedSlots = nextSlots.map((slot) => {
+          if (isSameAppointmentSlot && slot.time === defaultValues.time) {
+            return { ...slot, available: true }
+          }
+          return slot
+        })
+
+        setSlots(mappedSlots)
         const currentTime = defaultValues?.time
-        if (!nextSlots.some((slot) => slot.time === currentTime && slot.available)) {
-          const firstOpen = nextSlots.find((slot) => slot.available)
+        if (!mappedSlots.some((slot) => slot.time === currentTime && slot.available)) {
+          const firstOpen = mappedSlots.find((slot) => slot.available)
           setValue('time', firstOpen?.time || '')
         }
       })
@@ -73,6 +86,17 @@ export default function AppointmentForm({ defaultValues, patients = [], doctors 
         <span className="mb-1.5 block text-sm font-medium text-ink">Priority</span>
         <select {...register('priority')} className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15">
           <option>Routine</option><option>Follow-up</option><option>Emergency</option>
+        </select>
+      </label>
+      <label className="block">
+        <span className="mb-1.5 block text-sm font-medium text-ink">Status</span>
+        <select {...register('status')} className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15">
+          <option>Confirmed</option>
+          <option>In Progress</option>
+          <option>Waiting</option>
+          <option>Completed</option>
+          <option>Pending</option>
+          <option>Cancelled</option>
         </select>
       </label>
       <Input label="Date" type="date" {...register('date')} />

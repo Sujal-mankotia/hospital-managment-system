@@ -14,30 +14,28 @@ function formatMinutes(totalMinutes) {
   return `${String(hours12).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${suffix}`
 }
 
-function expandSlotRanges(schedule = []) {
-  return schedule.flatMap((entry) => {
-    if (!entry?.slots || entry.slots.length === 0) {
+function expandSlotRanges(slotsArray = []) {
+  if (!slotsArray || slotsArray.length === 0) {
+    return []
+  }
+
+  return slotsArray.flatMap((slot) => {
+    if (!slot || slot.toLowerCase() === 'off' || !slot.includes('-')) {
       return []
     }
 
-    return entry.slots.flatMap((slot) => {
-      if (!slot || slot.toLowerCase() === 'off' || !slot.includes('-')) {
-        return []
-      }
+    const [start, end] = slot.split('-')
+    const [startHours, startMinutes] = start.split(':').map(Number)
+    const [endHours, endMinutes] = end.split(':').map(Number)
+    const startTotal = startHours * 60 + startMinutes
+    const endTotal = endHours * 60 + endMinutes
+    const values = []
 
-      const [start, end] = slot.split('-')
-      const [startHours, startMinutes] = start.split(':').map(Number)
-      const [endHours, endMinutes] = end.split(':').map(Number)
-      const startTotal = startHours * 60 + startMinutes
-      const endTotal = endHours * 60 + endMinutes
-      const values = []
+    for (let current = startTotal; current < endTotal; current += 30) {
+      values.push(formatMinutes(current))
+    }
 
-      for (let current = startTotal; current < endTotal; current += 30) {
-        values.push(formatMinutes(current))
-      }
-
-      return values
-    })
+    return values
   })
 }
 

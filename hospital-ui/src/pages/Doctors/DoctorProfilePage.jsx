@@ -80,7 +80,17 @@ export default function DoctorProfilePage() {
       <PageHeader
         title="Doctor Profile"
         breadcrumb={[{ label: 'Doctors', path: '/doctors' }, { label: doctor.name }]}
-        actions={<Button variant="outline" icon={FiArrowLeft} onClick={() => navigate('/doctors')}>Back to list</Button>}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => navigate(`/appointments?doctorId=${encodeURIComponent(doctor.id)}&book=1`)}
+            >
+              Book Appointment
+            </Button>
+            <Button variant="outline" icon={FiArrowLeft} onClick={() => navigate('/doctors')}>Back to list</Button>
+          </div>
+        }
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -110,6 +120,15 @@ export default function DoctorProfilePage() {
               ))}
               <span className="rounded-full bg-teal-light px-2.5 py-1 text-xs font-medium text-teal">{doctor.department} Specialist</span>
             </div>
+          </div>
+          <div className="mt-5 flex gap-2 border-t border-line pt-5">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => navigate(`/appointments?doctorId=${encodeURIComponent(doctor.id)}`)}
+            >
+              View Appointments
+            </Button>
           </div>
         </div>
 

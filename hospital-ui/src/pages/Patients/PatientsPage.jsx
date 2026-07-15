@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react'
 import { FiPlus, FiEye, FiEdit2, FiTrash2, FiDownload, FiFilter } from 'react-icons/fi'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import PageHeader from '../../components/common/PageHeader'
 import SearchBar from '../../components/common/SearchBar'
 import Button from '../../components/common/Button'
@@ -31,6 +31,7 @@ function authHeaders(includeContentType = true) {
 
 export default function PatientsPage() {
   const { pushToast } = useUI()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [patients, setPatients] = useState([])
   const [doctors, setDoctors] = useState([])
@@ -233,6 +234,7 @@ export default function PatientsPage() {
               {[
                 ['Age', viewPatient.age], ['Gender', viewPatient.gender], ['Blood Group', viewPatient.bloodGroup],
                 ['Phone', viewPatient.phone], ['Ward', viewPatient.ward], ['Doctor', viewPatient.doctor],
+                ['Admitted On', viewPatient.admitted],
               ].map(([label, value]) => (
                 <div key={label}>
                   <p className="text-xs text-slate-light">{label}</p>
@@ -242,6 +244,19 @@ export default function PatientsPage() {
             </div>
             <h4 className="mb-3 text-sm font-semibold text-ink">Medical History</h4>
             <MedicalTimeline items={medicalHistory[viewPatient.id] || medicalHistory['PT-20481']} />
+            <div className="mt-6 flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/appointments?patientId=${encodeURIComponent(viewPatient.id)}&book=1`)}
+              >
+                View Appointments
+              </Button>
+              <Button
+                onClick={() => navigate(`/appointments?patientId=${encodeURIComponent(viewPatient.id)}&book=1`)}
+              >
+                Book Appointment
+              </Button>
+            </div>
           </div>
         )}
       </Modal>
