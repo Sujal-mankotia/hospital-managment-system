@@ -28,6 +28,17 @@ const userSchema = new mongoose.Schema(
     },
     resetPasswordToken: String,
     resetPasswordExpires: Date,
+    preferences: {
+      appearance: {
+        type: String,
+        enum: ['light', 'dark', 'system'],
+        default: 'system',
+      },
+      notifications: {
+        type: Boolean,
+        default: true,
+      },
+    },
   },
   { timestamps: true }
 )

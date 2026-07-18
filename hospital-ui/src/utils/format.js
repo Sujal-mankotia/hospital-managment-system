@@ -7,7 +7,7 @@ export function formatCurrency(n) {
 }
 
 export function todayLabel() {
-  return new Date('2026-07-06').toLocaleDateString('en-US', {
+  return new Date().toLocaleDateString(undefined, {
     weekday: 'long',
     year: 'numeric',
     month: 'long',

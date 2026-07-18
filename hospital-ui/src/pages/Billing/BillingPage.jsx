@@ -50,6 +50,7 @@ export default function BillingPage() {
   const [totalItems, setTotalItems] = useState(0)
   const [patientSearch, setPatientSearch] = useState('')
   const [patientDropdownOpen, setPatientDropdownOpen] = useState(false)
+  const [formErrors, setFormErrors] = useState({})
   const [form, setForm] = useState({
     patientId: '',
     paymentMethod: 'cash',
@@ -102,6 +103,28 @@ export default function BillingPage() {
     loadData()
   }, [loadData])
 
+  useEffect(() => {
+    if (!addOpen || form.patientId) return
+
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams({
+        limit: '20',
+        ...(patientSearch.trim() ? { search: patientSearch.trim() } : {}),
+      })
+
+      fetch(`${API_URL}/patients?${params.toString()}`, {
+        headers: getAuthHeaders(),
+      })
+        .then((r) => (r.ok ? r.json() : r.json().then((err) => Promise.reject(err))))
+        .then((data) => setPatients(data.items || []))
+        .catch((err) =>
+          pushToast({ type: 'error', title: 'Patient search failed', description: err.message || String(err) })
+        )
+    }, 250)
+
+    return () => window.clearTimeout(timer)
+  }, [addOpen, form.patientId, patientSearch, pushToast])
+
   const handleFieldChange = (event) => {
     const { name, value } = event.target
     setForm((prev) => ({ ...prev, [name]: value }))
@@ -136,21 +159,34 @@ export default function BillingPage() {
       gstRate: 18,
     })
     setPatientSearch('')
+    setFormErrors({})
   }
 
   const selectPatient = (patient) => {
     setForm((prev) => ({ ...prev, patientId: patient._id }))
     setPatientSearch(formatPatientLabel(patient))
+    setFormErrors((prev) => ({ ...prev, patientId: '' }))
     setPatientDropdownOpen(false)
   }
 
   const handleCreateBill = (event) => {
     event.preventDefault()
-    const validItems = form.items.filter((item) => item.description.trim() && item.amount !== '')
-    if (!form.patientId || validItems.length === 0) {
-      pushToast({ type: 'error', title: 'Missing details', description: 'Choose a patient and add at least one line item.' })
+    const validItems = form.items.filter((item) => item.description.trim() && Number(item.amount) > 0)
+    const nextErrors = {}
+
+    if (!form.patientId) nextErrors.patientId = 'Select a patient from MongoDB Atlas records.'
+    if (form.items.length === 0 || validItems.length === 0) nextErrors.items = 'Add at least one line item with amount greater than 0.'
+    form.items.forEach((item, index) => {
+      if (!item.description.trim()) nextErrors[`itemDescription-${index}`] = 'Description is required.'
+      if (Number(item.amount) <= 0) nextErrors[`itemAmount-${index}`] = 'Amount must be greater than 0.'
+    })
+
+    if (Object.keys(nextErrors).length > 0) {
+      setFormErrors(nextErrors)
+      pushToast({ type: 'error', title: 'Fix bill details', description: Object.values(nextErrors)[0] })
       return
     }
+    setFormErrors({})
 
     const payload = {
       patientId: form.patientId,
@@ -161,7 +197,6 @@ export default function BillingPage() {
         quantity: 1,
         unitPrice: Number(item.amount),
       })),
-      totalAmount: validItems.reduce((sum, item) => sum + Number(item.amount || 0), 0),
       gstEnabled: form.gstEnabled,
       gstRate: form.gstEnabled ? Number(form.gstRate) || 18 : 0,
     }
@@ -173,15 +208,17 @@ export default function BillingPage() {
     })
       .then((r) => (r.ok ? r.json() : r.json().then((err) => Promise.reject(err))))
       .then((data) => {
-        setBills((prev) => [data.bill, ...prev])
+        setBills((prev) => [data.bill, ...prev].slice(0, PAGE_SIZE))
+        setTotalItems((prev) => prev + 1)
         setAddOpen(false)
         resetForm()
         setPage(1)
-        pushToast({ type: 'success', title: 'Bill created', description: 'The bill has been added to records.' })
+        pushToast({ type: 'success', title: 'Bill created', description: `${data.bill.billNumber} has been saved.` })
       })
-      .catch((err) =>
+      .catch((err) => {
+        if (err.field) setFormErrors({ [err.field]: err.message })
         pushToast({ type: 'error', title: 'Create bill failed', description: err.message || String(err) })
-      )
+      })
   }
 
   const handleMarkPaid = (bill) => {
@@ -368,7 +405,7 @@ export default function BillingPage() {
 
       {/* Create Bill Modal */}
       <Modal open={addOpen} onClose={() => { setAddOpen(false); resetForm() }} title="Create Bill" size="lg">
-        <form className="space-y-4" onSubmit={handleCreateBill}>
+        <form className="space-y-4" onSubmit={handleCreateBill} noValidate>
           {/* Patient Selector with Search */}
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium text-ink">Patient</span>
@@ -378,10 +415,10 @@ export default function BillingPage() {
                 <input
                   type="text"
                   value={patientSearch}
-                  onChange={(e) => { setPatientSearch(e.target.value); setPatientDropdownOpen(true) }}
+                  onChange={(e) => { setPatientSearch(e.target.value); setForm((prev) => ({ ...prev, patientId: '' })); setPatientDropdownOpen(true) }}
                   onFocus={() => setPatientDropdownOpen(true)}
                   placeholder="Search by name, UHID, or phone…"
-                  className="w-full rounded-xl border border-line bg-surface py-2.5 pl-10 pr-10 text-sm text-ink placeholder:text-slate-light transition-colors hover:border-primary/40 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
+                  className={`w-full rounded-xl border bg-surface py-2.5 pl-10 pr-10 text-sm text-ink placeholder:text-slate-light transition-colors hover:border-primary/40 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15 ${formErrors.patientId ? 'border-rose-400 ring-2 ring-rose-100' : 'border-line'}`}
                 />
                 {patientSearch && (
                   <button
@@ -417,6 +454,7 @@ export default function BillingPage() {
                 </div>
               )}
             </div>
+            {formErrors.patientId && <p className="mt-1 text-xs text-rose-600">{formErrors.patientId}</p>}
           </label>
 
           {/* Payment Method */}
@@ -472,17 +510,19 @@ export default function BillingPage() {
                   <Input
                     label="Description"
                     value={item.description}
-                    onChange={(event) => handleItemChange(index, 'description', event.target.value)}
+                    onChange={(event) => { handleItemChange(index, 'description', event.target.value); setFormErrors((prev) => ({ ...prev, [`itemDescription-${index}`]: '' })) }}
                     placeholder="Consultation"
+                    error={formErrors[`itemDescription-${index}`]}
                   />
                   <Input
                     label="Amount"
                     type="number"
-                    min="0"
+                    min="0.01"
                     step="0.01"
                     value={item.amount}
-                    onChange={(event) => handleItemChange(index, 'amount', event.target.value)}
+                    onChange={(event) => { handleItemChange(index, 'amount', event.target.value); setFormErrors((prev) => ({ ...prev, [`itemAmount-${index}`]: '', items: '' })) }}
                     placeholder="500"
+                    error={formErrors[`itemAmount-${index}`]}
                   />
                   <div className="flex items-end">
                     <Button
@@ -498,6 +538,7 @@ export default function BillingPage() {
                 </div>
               </div>
             ))}
+            {formErrors.items && <p className="text-xs text-rose-600">{formErrors.items}</p>}
           </div>
 
           {/* Total */}

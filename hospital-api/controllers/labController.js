@@ -4,13 +4,15 @@ import { sendControllerError } from '../utils/controllerErrors.js'
 
 export async function createLabReport(req, res) {
     try {
-        const { patientId, testName, result, remarks, status, reportDate } = req.body
+        const { patientId, testName, result, remarks, status, reportDate, fileUrl, fileName } = req.body
 
         if (!patientId || !testName) {
             return res.status(400).json({ message: 'patientId and testName are required' })
         }
 
-        const patient = await Patient.findOne({ id: patientId })
+        const patient = /^[0-9a-fA-F]{24}$/.test(patientId)
+            ? await Patient.findById(patientId)
+            : await Patient.findOne({ id: patientId })
         if (!patient) {
             return res.status(400).json({ message: 'Select a valid patient' })
         }
@@ -21,11 +23,14 @@ export async function createLabReport(req, res) {
 
         const labReport = await LabReport.create({
             patientId: patient.id,
+            patient: patient._id,
             testName,
             result,
             remarks,
             status,
             reportDate,
+            fileUrl,
+            fileName,
         })
 
         res.status(201).json({
@@ -78,7 +83,9 @@ export async function getLabReports(req, res) {
             filter.$or = searchTerms
         }
 
-        const labReports = await LabReport.find(filter).sort({ reportDate: -1, createdAt: -1 })
+        const labReports = await LabReport.find(filter)
+            .populate('patient', 'name id age gender phone disease doctor medicalHistory')
+            .sort({ reportDate: -1, createdAt: -1 })
 
         res.json({ labReports })
     } catch (error) {
@@ -116,7 +123,7 @@ export async function updateLabReport(req, res) {
             return res.status(400).json({ message: 'Select a valid status' })
         }
 
-        const allowed = ['testName', 'result', 'remarks', 'status', 'reportDate']
+        const allowed = ['testName', 'result', 'remarks', 'status', 'reportDate', 'fileUrl', 'fileName']
         allowed.forEach((field) => {
             if (req.body[field] !== undefined) {
                 labReport[field] = req.body[field]
