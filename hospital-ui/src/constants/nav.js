@@ -8,6 +8,6 @@ export const navItems = [
   { key: 'lab', label: 'Lab', path: '/lab', icon: 'lab', disabled: false },
   { key: 'pharmacy', label: 'Pharmacy', path: '/pharmacy', icon: 'pharmacy', disabled: false },
   { key: 'billing', label: 'Billing', path: '/billing', icon: 'billing', disabled: false },
-  { key: 'reports', label: 'Reports', path: '/reports', icon: 'reports', disabled: true },
-  { key: 'settings', label: 'Settings', path: '/settings', icon: 'settings', disabled: true },
+  { key: 'reports', label: 'Reports', path: '/reports', icon: 'reports', disabled: false },
+  { key: 'settings', label: 'Settings', path: '/settings', icon: 'settings', disabled: false },
 ]

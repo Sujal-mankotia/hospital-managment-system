@@ -60,7 +60,17 @@ export async function createPatient(req, res) {
 
 export async function getPatients(req, res) {
     try {
-        const patients = await Patient.find().sort({ createdAt: -1 })
+        const filter = {}
+        if (req.query.search?.trim()) {
+            const q = req.query.search.trim()
+            filter.$or = [
+                { name: { $regex: q, $options: 'i' } },
+                { id: { $regex: q, $options: 'i' } },
+                { phone: { $regex: q, $options: 'i' } },
+            ]
+        }
+        const limit = Math.min(1000, Math.max(1, Number(req.query.limit) || 1000))
+        const patients = await Patient.find(filter).sort({ createdAt: -1 }).limit(limit)
         res.json({ items: patients })
     } catch (error) {
         sendControllerError(res, error, 'Get patients failed')

@@ -27,6 +27,12 @@ export const LAB_REPORT_TYPES = [
   'HCV',
   'Pregnancy Test',
   'Chest X-Ray',
+  'Blood Test',
+  'Urine Test',
+  'X-Ray',
+  'CT Scan',
+  'MRI',
+  'Other',
   'ECG',
 ]
 
@@ -36,6 +42,11 @@ const labReportSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+    },
+    patient: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Patient',
+      index: true,
     },
     testName: {
       type: String,
@@ -66,9 +77,22 @@ const labReportSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    fileUrl: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    fileName: {
+      type: String,
+      default: '',
+      trim: true,
+    },
   },
   { timestamps: true }
 )
+
+labReportSchema.index({ patientId: 1, reportDate: -1 })
+labReportSchema.index({ testName: 1, reportDate: -1 })
 
 labReportSchema.pre('save', function setCompletionTimestamp(next) {
   if (this.isModified('status')) {

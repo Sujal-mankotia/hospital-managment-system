@@ -13,7 +13,7 @@ const paymentHistoryEntrySchema = new mongoose.Schema({
   amount: { type: Number, required: true, min: 0 },
   method: {
     type: String,
-    enum: ['cash', 'card', 'upi', 'net_banking', 'insurance'],
+    enum: ['cash', 'card', 'upi', 'net_banking', 'insurance', 'other'],
     default: 'cash',
   },
   collectedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -32,6 +32,11 @@ const billSchema = new mongoose.Schema(
     patient: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Patient',
+      index: true,
+    },
+    patientName: {
+      type: String,
+      trim: true,
     },
     billNumber: {
       type: String,
@@ -41,7 +46,7 @@ const billSchema = new mongoose.Schema(
     items: [billItemSchema],
     paymentMethod: {
       type: String,
-      enum: ['cash', 'card', 'upi', 'net_banking', 'insurance'],
+      enum: ['cash', 'card', 'upi', 'net_banking', 'insurance', 'other'],
       default: 'cash',
     },
     totalAmount: {
@@ -69,6 +74,21 @@ const billSchema = new mongoose.Schema(
       default: 18,
       min: 0,
     },
+    discount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    notes: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    doctorName: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     paymentHistory: [paymentHistoryEntrySchema],
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -77,6 +97,10 @@ const billSchema = new mongoose.Schema(
   },
   { timestamps: true }
 )
+
+billSchema.index({ createdAt: -1 })
+billSchema.index({ status: 1, createdAt: -1 })
+billSchema.index({ patientName: 'text', patientId: 'text', billNumber: 'text' })
 
 billSchema.pre('save', function updateStatus(next) {
   if (!this.billNumber) {

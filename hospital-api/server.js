@@ -12,6 +12,8 @@ import pharmacyRoutes from './routes/pharmacy.js'
 import labReportRoutes from './routes/lab.js'
 import appointmentRoutes from './routes/appointmentRoutes.js'
 import doctorRoutes from './routes/doctorRoutes.js'
+import reportsRoutes from './routes/reportsRoutes.js'
+import settingsRoutes from './routes/settingsRoutes.js'
 
 dotenv.config()
 
@@ -57,6 +59,8 @@ if (dbConnected) {
   app.use('/api/doctors', doctorRoutes)
   app.use('/api/queue', queueRoutes)
   app.use('/api/bills', billingRoutes)
+  app.use('/api/reports', reportsRoutes)
+  app.use('/api/settings', settingsRoutes)
   app.use('/api', paymentRoutes)
   app.use('/api/medicines', pharmacyRoutes)
   app.use('/api/lab-reports', labReportRoutes)

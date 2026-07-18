@@ -16,6 +16,8 @@ import AppointmentsPage from './pages/Appointments/AppointmentsPage'
 import BillingPage from './pages/Billing/BillingPage'
 import PharmacyPage from './pages/Pharmacy/PharmacyPage'
 import LabPage from './pages/Lab/LabPage'
+import ReportsPage from './pages/Reports/ReportsPage'
+import SettingsPage from './pages/Settings/SettingsPage'
 import NotFoundPage from './pages/NotFound/NotFoundPage'
 
 // Role groups
@@ -52,6 +54,8 @@ export default function App() {
               {/* Staff + admin only */}
               <Route path="/patients" element={<ProtectedRoute allowedRoles={STAFF}><PatientsPage /></ProtectedRoute>} />
               <Route path="/billing" element={<ProtectedRoute allowedRoles={STAFF}><BillingPage /></ProtectedRoute>} />
+              <Route path="/reports" element={<ProtectedRoute allowedRoles={STAFF}><ReportsPage /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute allowedRoles={ALL_ROLES}><SettingsPage /></ProtectedRoute>} />
               <Route path="/pharmacy" element={<ProtectedRoute allowedRoles={STAFF}><PharmacyPage /></ProtectedRoute>} />
               <Route path="/lab" element={<ProtectedRoute allowedRoles={STAFF}><LabPage /></ProtectedRoute>} />
             </Route>

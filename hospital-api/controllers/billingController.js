@@ -23,25 +23,28 @@ async function generateBillNumber() {
 
 export async function createBill(req, res) {
     try {
-        const { patientId, items, totalAmount, status, paymentMethod, gstEnabled, gstRate } = req.body
+        const { patientId, patientObjectId, items, status, paymentMethod, gstEnabled, gstRate, discount = 0, notes = '', doctorName = '' } = req.body
 
-        if (!patientId || !items || !Array.isArray(items) || items.length === 0) {
-            return res.status(400).json({ message: 'patientId and items are required' })
+        if (!patientId && !patientObjectId) {
+            return res.status(400).json({ message: 'Select a patient', field: 'patientId' })
         }
 
-        // Find patient by MongoDB _id or custom id field
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ message: 'Add at least one line item', field: 'items' })
+        }
+
         let patient = null
-        if (/^[0-9a-fA-F]{24}$/.test(patientId)) {
-            patient = await Patient.findById(patientId)
+        const lookupId = patientObjectId || patientId
+        if (/^[0-9a-fA-F]{24}$/.test(lookupId)) {
+            patient = await Patient.findById(lookupId)
         }
         if (!patient) {
-            patient = await Patient.findOne({ id: patientId })
+            patient = await Patient.findOne({ id: lookupId })
         }
         if (!patient) {
-            return res.status(400).json({ message: 'Select a valid patient' })
+            return res.status(400).json({ message: 'Select a valid patient from the patient list', field: 'patientId' })
         }
 
-        // Compute subtotals and total
         const processedItems = items.map((item) => {
             const qty = Number(item.quantity) || 1
             const unitPrice = Number(item.unitPrice) || Number(item.amount) || 0
@@ -53,20 +56,29 @@ export async function createBill(req, res) {
                 unitPrice,
                 subtotal,
             }
-        })
+        }).filter((item) => item.description && item.subtotal > 0)
 
-        const computedTotal = totalAmount ?? processedItems.reduce((sum, item) => sum + item.subtotal, 0)
+        if (processedItems.length === 0) {
+            return res.status(400).json({ message: 'Line items must include a description and amount greater than 0', field: 'items' })
+        }
 
-        // Apply GST if enabled
+        const subtotal = processedItems.reduce((sum, item) => sum + item.subtotal, 0)
+        const discountAmount = Math.max(0, Number(discount) || 0)
         const isGstEnabled = gstEnabled === true
-        const gstRateNum = Number(gstRate) || 18
-        const finalTotal = isGstEnabled ? computedTotal + (computedTotal * gstRateNum) / 100 : computedTotal
+        const gstRateNum = gstRate === undefined || gstRate === '' ? 18 : Number(gstRate)
+        const taxableAmount = Math.max(0, subtotal - discountAmount)
+        const finalTotal = isGstEnabled ? taxableAmount + (taxableAmount * gstRateNum) / 100 : taxableAmount
+
+        if (finalTotal <= 0) {
+            return res.status(400).json({ message: 'Bill amount must be greater than 0', field: 'items' })
+        }
 
         const billNumber = await generateBillNumber()
 
         const bill = await Bill.create({
             patientId: patient.id,
             patient: patient._id,
+            patientName: patient.name,
             billNumber,
             items: processedItems,
             totalAmount: finalTotal,
@@ -75,6 +87,9 @@ export async function createBill(req, res) {
             paymentMethod: paymentMethod || 'cash',
             gstEnabled: isGstEnabled,
             gstRate: isGstEnabled ? gstRateNum : 0,
+            discount: discountAmount,
+            notes,
+            doctorName,
             createdBy: req.user?._id,
         })
 

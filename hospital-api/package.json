@@ -8,7 +8,8 @@
     "start": "node server.js",
     "seed": "node seed.js",
     "seed:billing": "node scripts/seedBillingModule.js",
-    "seed:patients": "node scripts/seedPatients.js"
+    "seed:patients": "node scripts/seedPatients.js",
+    "seed:atlas-demo": "node scripts/seedAtlasDemoData.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
