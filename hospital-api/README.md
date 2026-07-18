@@ -19,15 +19,21 @@ copy .env.example .env
 npm run dev
 ```
 
-Update `.env` before running:
+Update `.env` before running. For MongoDB Atlas, copy the connection string from Atlas and replace `<username>`, `<password>`, and `<cluster-url>`:
 
 ```env
 PORT=5000
-MONGO_URI=mongodb://127.0.0.1:27017/hospital_management
+MONGO_URI=mongodb+srv://<username>:<password>@<cluster-url>/hospital_management?retryWrites=true&w=majority
 JWT_SECRET=write_a_long_secret_here
 JWT_EXPIRES_IN=7d
 CLIENT_URL=http://localhost:5173
 ```
+
+Atlas checklist:
+- Create a database user in Atlas.
+- Add your current IP address in Atlas Network Access.
+- Use the `Drivers` connection string, not the Compass-only workflow.
+- If your password has special characters like `@`, `#`, or `/`, URL-encode them before putting it in `MONGO_URI`.
 
 ## Main Routes
 ```text

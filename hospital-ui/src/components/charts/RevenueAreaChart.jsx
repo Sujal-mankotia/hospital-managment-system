@@ -12,9 +12,9 @@ export default function RevenueAreaChart({ data }) {
         </defs>
         <CartesianGrid stroke="#E2E8F0" vertical={false} />
         <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#64748B' }} axisLine={false} tickLine={false} />
-        <YAxis tick={{ fontSize: 12, fill: '#64748B' }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${v / 100000}L`} />
+        <YAxis tick={{ fontSize: 12, fill: '#64748B' }} axisLine={false} tickLine={false} tickFormatter={(v) => `Rs ${v / 100000}L`} />
         <Tooltip
-          formatter={(v) => [`₹${v.toLocaleString('en-IN')}`, 'Revenue']}
+          formatter={(v) => [`Rs ${v.toLocaleString('en-IN')}`, 'Revenue']}
           contentStyle={{ borderRadius: 12, border: '1px solid #E2E8F0', fontSize: 12 }}
         />
         <Area type="monotone" dataKey="revenue" stroke="#0F6FDE" strokeWidth={2.5} fill="url(#revFill)" />

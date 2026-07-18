@@ -10,19 +10,10 @@ import Modal from '../../components/common/Modal'
 import EmptyState from '../../components/common/EmptyState'
 import Input from '../../components/common/Input'
 import { useUI } from '../../context/UIContext'
+import { API_URL, getAuthHeaders } from '../../api/hospitalApi'
 
 const PAGE_SIZE = 10
 const STATUSES = ['All', 'pending', 'partial', 'paid', 'refunded', 'cancelled']
-const HOSPITAL_API = (import.meta.env.VITE_HOSPITAL_API_URL || import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000/api').replace(/\/$/, '').replace(/\/api$/, '')
-const PATIENT_API = (import.meta.env.VITE_PATIENT_API_URL || HOSPITAL_API).replace(/\/$/, '').replace(/\/api$/, '')
-
-const getAuthHeaders = (includeJson = false) => {
-  const token = localStorage.getItem('hospital_token')
-  return {
-    ...(includeJson ? { 'Content-Type': 'application/json' } : {}),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  }
-}
 
 const formatPatientLabel = (patient) => {
   if (!patient) return ''
@@ -88,8 +79,10 @@ export default function BillingPage() {
       ...(status !== 'All' ? { status } : {}),
     })
     Promise.all([
-      fetch(`${PATIENT_API}/api/patients?limit=1000`).then((r) => r.json()),
-      fetch(`${HOSPITAL_API}/api/bills?${params.toString()}`, {
+      fetch(`${API_URL}/patients?limit=1000`, {
+        headers: getAuthHeaders(),
+      }).then((r) => (r.ok ? r.json() : r.json().then((err) => Promise.reject(err)))),
+      fetch(`${API_URL}/bills?${params.toString()}`, {
         headers: getAuthHeaders(),
       }).then((r) => (r.ok ? r.json() : r.json().then((err) => Promise.reject(err)))),
     ])
@@ -173,7 +166,7 @@ export default function BillingPage() {
       gstRate: form.gstEnabled ? Number(form.gstRate) || 18 : 0,
     }
 
-    fetch(`${HOSPITAL_API}/api/bills`, {
+    fetch(`${API_URL}/bills`, {
       method: 'POST',
       headers: getAuthHeaders(true),
       body: JSON.stringify(payload),
@@ -193,7 +186,7 @@ export default function BillingPage() {
 
   const handleMarkPaid = (bill) => {
     const remaining = (bill.totalAmount || 0) - (bill.amountPaid || 0)
-    fetch(`${HOSPITAL_API}/api/bills/${bill._id}/pay`, {
+    fetch(`${API_URL}/bills/${bill._id}/pay`, {
       method: 'PUT',
       headers: getAuthHeaders(true),
       body: JSON.stringify({ paymentMethod: bill.paymentMethod || 'cash', amount: remaining }),

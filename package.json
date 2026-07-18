@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "concurrently \"npm --prefix hospital-api run dev\" \"npm --prefix server run dev\" \"npm --prefix hospital-ui run dev -- --host 127.0.0.1\"",
     "dev:auth": "npm --prefix hospital-api run dev",
+    "dev:api": "npm --prefix hospital-api run dev",
     "dev:server": "npm --prefix server run dev",
     "dev:ui": "npm --prefix hospital-ui run dev -- --host 127.0.0.1",
     "seed": "npm --prefix hospital-api run seed"

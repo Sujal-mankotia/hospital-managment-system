@@ -15,18 +15,10 @@ import { WaitingListPanel, EmergencyQueuePanel } from '../../components/tables/Q
 import { emergencyQueue as staticEmergencyQueue } from '../../data/appointments'
 import { listDoctors } from '../../api/doctorsApi'
 import { useUI } from '../../context/UIContext'
+import { apiRequest } from '../../api/hospitalApi'
 
 const PAGE_SIZE = 6
 const STATUSES = ['All', 'Confirmed', 'In Progress', 'Waiting', 'Cancelled']
-const API = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/$/, '')
-
-function authHeaders() {
-  const token = localStorage.getItem('hospital_token')
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  }
-}
 
 function CalendarView({ items }) {
   const grouped = items.reduce((accumulator, appointment) => {
@@ -211,15 +203,13 @@ export default function AppointmentsPage() {
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   const loadAppointments = () => {
-    fetch(`${API}/appointments?limit=1000`, { headers: authHeaders() })
-      .then((response) => (response.ok ? response.json() : response.json().then((error) => Promise.reject(error))))
+    apiRequest('/appointments?limit=1000')
       .then((data) => setAppointments(data.items || []))
       .catch(() => pushToast({ type: 'error', title: 'Failed to load appointments' }))
   }
 
   const loadPatients = () => {
-    fetch(`${API}/patients?limit=1000`, { headers: authHeaders() })
-      .then((response) => (response.ok ? response.json() : response.json().then((error) => Promise.reject(error))))
+    apiRequest('/patients?limit=1000')
       .then((data) => setPatients(data.items || []))
       .catch(() => pushToast({ type: 'error', title: 'Failed to load patients' }))
   }
@@ -231,19 +221,16 @@ export default function AppointmentsPage() {
   }
 
   const loadEmergencyQueue = () => {
-    fetch(`${API}/queue/emergency`, { headers: authHeaders() })
-      .then((response) => (response.ok ? response.json() : response.json().then((error) => Promise.reject(error))))
+    apiRequest('/queue/emergency')
       .then((data) => setEmergencyQueue(data.queue || []))
       .catch(() => pushToast({ type: 'error', title: 'Failed to load emergency queue' }))
   }
 
   const handleAddToEmergencyQueue = (data) => {
-    fetch(`${API}/queue/emergency`, {
+    apiRequest('/queue/emergency', {
       method: 'POST',
-      headers: authHeaders(),
       body: JSON.stringify(data),
     })
-      .then((response) => (response.ok ? response.json() : response.json().then((error) => Promise.reject(error))))
       .then((result) => {
         setEmergencyQueue(result.queue || [])
         setEqModalOpen(false)
@@ -254,11 +241,9 @@ export default function AppointmentsPage() {
 
   const handleRemoveFromEmergencyQueue = () => {
     if (!deleteEqTarget) return
-    fetch(`${API}/queue/emergency/${deleteEqTarget.id}`, {
+    apiRequest(`/queue/emergency/${deleteEqTarget.id}`, {
       method: 'DELETE',
-      headers: authHeaders(),
     })
-      .then((response) => (response.ok ? response.json() : response.json().then((error) => Promise.reject(error))))
       .then((result) => {
         setEmergencyQueue(result.queue || [])
         pushToast({ type: 'info', title: 'Removed from Emergency Queue', description: `${deleteEqTarget.name} has been removed.` })
@@ -294,49 +279,43 @@ export default function AppointmentsPage() {
   }, [searchParams])
 
   const handleBook = (data) => {
-    fetch(`${API}/appointments`, {
+    apiRequest('/appointments', {
       method: 'POST',
-      headers: authHeaders(),
       body: JSON.stringify({ ...data, status: 'Confirmed' }),
     })
-      .then((response) => (response.ok ? response.json() : response.json().then((error) => Promise.reject(error))))
       .then((newAppointment) => {
         setAppointments((items) => [newAppointment, ...items])
         setBookOpen(false)
         setBookDefaults(null)
         pushToast({ type: 'success', title: 'Appointment booked', description: `${newAppointment.patient} scheduled with ${newAppointment.doctor}.` })
       })
-      .catch((error) => pushToast({ type: 'error', title: 'Booking failed', description: error.message || error.error || String(error) }))
+      .catch((error) => pushToast({ type: 'error', title: 'Booking failed', description: error.message || String(error) }))
   }
 
   const handleCancel = () => {
-    fetch(`${API}/appointments/${cancelTarget.id}`, {
+    apiRequest(`/appointments/${cancelTarget.id}`, {
       method: 'PUT',
-      headers: authHeaders(),
       body: JSON.stringify({ status: 'Cancelled' }),
     })
-      .then((response) => (response.ok ? response.json() : response.json().then((error) => Promise.reject(error))))
       .then((updated) => {
         setAppointments((items) => items.map((appointment) => (appointment.id === updated.id ? updated : appointment)))
         pushToast({ type: 'info', title: 'Appointment cancelled' })
         setCancelTarget(null)
       })
-      .catch((error) => pushToast({ type: 'error', title: 'Cancel failed', description: error.message || error.error || String(error) }))
+      .catch((error) => pushToast({ type: 'error', title: 'Cancel failed', description: error.message || String(error) }))
   }
 
   const handleReschedule = (data) => {
-    fetch(`${API}/appointments/${rescheduleTarget.id}`, {
+    apiRequest(`/appointments/${rescheduleTarget.id}`, {
       method: 'PUT',
-      headers: authHeaders(),
       body: JSON.stringify({ ...data, status: 'Confirmed' }),
     })
-      .then((response) => (response.ok ? response.json() : response.json().then((error) => Promise.reject(error))))
       .then((updated) => {
         setAppointments((items) => items.map((appointment) => (appointment.id === updated.id ? updated : appointment)))
         pushToast({ type: 'success', title: 'Appointment rescheduled' })
         setRescheduleTarget(null)
       })
-      .catch((error) => pushToast({ type: 'error', title: 'Reschedule failed', description: error.message || error.error || String(error) }))
+      .catch((error) => pushToast({ type: 'error', title: 'Reschedule failed', description: error.message || String(error) }))
   }
 
   useEffect(() => {

@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
-import { FiPlus, FiEye, FiEdit2, FiTrash2, FiDownload, FiFilter } from 'react-icons/fi'
+import { FiPlus, FiEye, FiEdit2, FiTrash2, FiDownload, FiFilter, FiActivity } from 'react-icons/fi'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import PageHeader from '../../components/common/PageHeader'
 import SearchBar from '../../components/common/SearchBar'
@@ -15,19 +15,29 @@ import MedicalTimeline from '../../components/tables/MedicalTimeline'
 import PatientForm from '../../components/forms/PatientForm'
 import { listDoctors } from '../../api/doctorsApi'
 import { useUI } from '../../context/UIContext'
+import { apiRequest } from '../../api/hospitalApi'
 import { medicalHistory } from '../../data/patients'
+import {
+  buildPatientIndex,
+  buildPatientPriorityHeap,
+  buildPatientSearchTree,
+  mergeSortPatients,
+} from '../../utils/patientDsa'
 
 const PAGE_SIZE = 6
 const STATUSES = ['All', 'Admitted', 'Critical', 'Stable', 'Discharged']
-const API = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/$/, '')
 
-function authHeaders(includeContentType = true) {
-  const token = localStorage.getItem('hospital_token')
-  return {
-    ...(includeContentType ? { 'Content-Type': 'application/json' } : {}),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  }
-}
+const buildPatientPayload = (data) => ({
+  name: data.name || '',
+  age: data.age === '' ? undefined : Number(data.age),
+  gender: data.gender || 'Other',
+  bloodGroup: data.bloodGroup || '',
+  phone: data.phone || '',
+  disease: data.disease || '',
+  doctor: data.doctor || '',
+  status: data.status || 'Admitted',
+  photo: data.photo || '',
+})
 
 export default function PatientsPage() {
   const { pushToast } = useUI()
@@ -46,18 +56,19 @@ export default function PatientsPage() {
   const [deleteTarget, setDeleteTarget] = useState(null)
 
   const filtered = useMemo(() => {
-    let list = patients.filter((patient) =>
-      (status === 'All' || patient.status === status) &&
-      (patient.name.toLowerCase().includes(search.toLowerCase()) || patient.id.toLowerCase().includes(search.toLowerCase()))
-    )
-    list = [...list].sort((a, b) => {
-      if (sortBy === 'name') return a.name.localeCompare(b.name)
-      if (sortBy === 'age') return a.age - b.age
-      if (sortBy === 'id') return a.id.localeCompare(b.id)
-      return 0
-    })
-    return list
+    const tree = buildPatientSearchTree(patients)
+    const searchResults = search.trim() ? tree.search(search) : patients
+
+    const list = searchResults.filter((p) => status === 'All' || p.status === status)
+    return mergeSortPatients(list, sortBy)
   }, [patients, search, status, sortBy])
+
+  const priorityQueue = useMemo(
+    () => buildPatientPriorityHeap(filtered).toSortedArray().slice(0, 3),
+    [filtered]
+  )
+
+  const patientIndex = useMemo(() => buildPatientIndex(patients), [patients])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
@@ -69,15 +80,10 @@ export default function PatientsPage() {
   }
 
   const handleAdd = (data) => {
-    fetch(`${API}/patients`, {
+    apiRequest('/patients', {
       method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({
-        ...data,
-        photo: data.photo || '',
-      }),
+      body: JSON.stringify(buildPatientPayload(data)),
     })
-      .then((response) => (response.ok ? response.json() : response.json().then((error) => Promise.reject(error))))
       .then((createdResponse) => {
         const created = createdResponse.patient || createdResponse
         setPatients((items) => [created, ...items])
@@ -88,15 +94,10 @@ export default function PatientsPage() {
   }
 
   const handleEdit = (data) => {
-    fetch(`${API}/patients/${editPatient.id}`, {
+    apiRequest(`/patients/${editPatient.id}`, {
       method: 'PUT',
-      headers: authHeaders(),
-      body: JSON.stringify({
-        ...data,
-        photo: data.photo || '',
-      }),
+      body: JSON.stringify(buildPatientPayload(data)),
     })
-      .then((response) => (response.ok ? response.json() : response.json().then((error) => Promise.reject(error))))
       .then((updatedResponse) => {
         const updated = updatedResponse.patient || updatedResponse
         setPatients((items) => items.map((patient) => (patient.id === updated.id ? updated : patient)))
@@ -107,19 +108,17 @@ export default function PatientsPage() {
   }
 
   const handleDelete = () => {
-    fetch(`${API}/patients/${deleteTarget.id}`, { method: 'DELETE', headers: authHeaders() })
-      .then((response) => (response.ok ? response.json() : response.json().then((error) => Promise.reject(error))))
+    apiRequest(`/patients/${deleteTarget.id}`, { method: 'DELETE' })
       .then(() => {
         setPatients((items) => items.filter((patient) => patient.id !== deleteTarget.id))
         pushToast({ type: 'info', title: 'Patient removed', description: `${deleteTarget.name}'s record was deleted.` })
         setDeleteTarget(null)
       })
-      .catch((error) => pushToast({ type: 'error', title: 'Delete failed', description: error.message || String(error) }))
+      .catch((err) => pushToast({ type: 'error', title: 'Delete failed', description: err.message || String(err) }))
   }
 
   useEffect(() => {
-    fetch(`${API}/patients?limit=1000`, { headers: authHeaders() })
-      .then((response) => (response.ok ? response.json() : response.json().then((error) => Promise.reject(error))))
+    apiRequest('/patients?limit=1000')
       .then((data) => setPatients(data.items || []))
       .catch(() => pushToast({ type: 'error', title: 'Failed to load patients' }))
   }, [])
@@ -132,7 +131,7 @@ export default function PatientsPage() {
     const patientId = searchParams.get('patientId')
     if (!patientId || patients.length === 0) return
 
-    const linkedPatient = patients.find((patient) => patient.id === patientId)
+    const linkedPatient = patientIndex.get(patientId)
     if (!linkedPatient) {
       pushToast({ type: 'error', title: 'Patient not found', description: `No patient record found for ${patientId}.` })
       setSearchParams({})
@@ -141,7 +140,7 @@ export default function PatientsPage() {
 
     setSearch(patientId)
     setViewPatient(linkedPatient)
-  }, [patients, searchParams, setSearchParams])
+  }, [patients, patientIndex, searchParams, setSearchParams])
 
   return (
     <div>
@@ -178,6 +177,37 @@ export default function PatientsPage() {
             </Button>
           </div>
         </div>
+
+        {priorityQueue.length > 0 && (
+          <div className="mb-5 rounded-xl border border-line bg-slate-50 p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="rounded-lg bg-primary-light p-2 text-primary"><FiActivity size={16} /></span>
+                <div>
+                  <h3 className="text-sm font-semibold text-ink">Triage Queue</h3>
+                  <p className="text-xs text-slate-light">Max Heap + BST + Hash Table + Merge Sort</p>
+                </div>
+              </div>
+              <Badge>{priorityQueue[0].status}</Badge>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {priorityQueue.map((patient, index) => (
+                <button
+                  key={patient.id}
+                  onClick={() => setViewPatient(patient)}
+                  className="rounded-lg border border-line bg-surface p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary-light/40"
+                >
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-primary">#{index + 1}</span>
+                    <span className="id-tag">{patient.id}</span>
+                  </div>
+                  <p className="truncate text-sm font-semibold text-ink">{patient.name}</p>
+                  <p className="mt-1 truncate text-xs text-slate">{patient.disease || 'No condition listed'}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {paged.length === 0 ? (
           <EmptyState title="No patients found" description="Try adjusting your search or filters." />

@@ -4,6 +4,8 @@ import Input from '../common/Input'
 import Button from '../common/Button'
 import { getDoctorSlots } from '../../api/doctorsApi'
 
+const DEFAULT_SLOTS = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '16:00', '16:30', '17:00']
+
 export default function AppointmentForm({ defaultValues, patients = [], doctors = [], onSubmit, onCancel, submitLabel = 'Book Appointment' }) {
   const fallbackDoctorId = defaultValues?.doctorId || doctors.find((doctor) => doctor.name === defaultValues?.doctor)?.id || doctors[0]?.id || ''
   const { register, handleSubmit, watch, setValue } = useForm({
@@ -55,12 +57,19 @@ export default function AppointmentForm({ defaultValues, patients = [], doctors 
           setValue('time', firstOpen?.time || '')
         }
       })
-      .catch(() => setSlots([]))
+      .catch(() => setSlots(DEFAULT_SLOTS.map((time) => ({ time, available: true }))))
       .finally(() => setLoadingSlots(false))
   }, [selectedDoctorId, selectedDate, setValue, defaultValues?.time])
 
   return (
-    <form onSubmit={handleSubmit((data) => onSubmit?.(data))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <form
+      onSubmit={handleSubmit((data) => onSubmit?.({
+        ...data,
+        doctor: selectedDoctor?.name || data.doctor || '',
+        department: selectedDoctor?.department || data.department || '',
+      }))}
+      className="grid grid-cols-1 gap-4 sm:grid-cols-2"
+    >
       <label className="block">
         <span className="mb-1.5 block text-sm font-medium text-ink">Patient</span>
         <select
